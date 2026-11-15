@@ -1,0 +1,64 @@
+@import "tailwindcss";
+
+@theme {
+  --font-display: "Bricolage Grotesque Variable", ui-sans-serif, system-ui, sans-serif;
+  --font-sans: "Figtree Variable", ui-sans-serif, system-ui, sans-serif;
+  --color-bun: #ffc93c;
+  --color-bun-deep: #f2b01e;
+  --color-ink: #1b1410;
+  --color-ketchup: #d7263d;
+  --color-pickle: #2b7a3d;
+  --color-paper: #fffdf7;
+  --color-muted: #66584a;
+  --color-line: #e4d4a8;
+}
+
+html, body, #root { min-height: 100%; }
+body {
+  margin: 0;
+  background: var(--color-bun);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+  -webkit-tap-highlight-color: transparent;
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+:focus-visible { outline: 3px solid var(--color-ketchup); outline-offset: 3px; border-radius: 6px; }
+
+/* The one memorable device: order "tickets" with a tear-off perforation. */
+.ticket {
+  position: relative;
+  background: var(--color-paper);
+  border: 2.5px solid var(--color-ink);
+  border-radius: 18px;
+  box-shadow: 5px 5px 0 0 var(--color-ink);
+}
+.tear {
+  position: relative;
+  height: 0;
+  border-top: 2.5px dashed var(--color-ink);
+  margin: 0 14px;
+}
+.tear::before, .tear::after {
+  content: "";
+  position: absolute;
+  top: -13.5px;
+  width: 24px;
+  height: 24px;
+  background: var(--color-bun);
+  border: 2.5px solid var(--color-ink);
+  border-radius: 999px;
+}
+.tear::before { left: -27px; clip-path: inset(0 0 0 50%); }
+.tear::after  { right: -27px; clip-path: inset(0 50% 0 0); }
+
+@keyframes drop-in {
+  0%   { transform: translateY(-60px) rotate(-9deg); opacity: 0; }
+  60%  { transform: translateY(6px) rotate(-3deg); opacity: 1; }
+  100% { transform: translateY(0) rotate(-4deg); opacity: 1; }
+}
+.burger-drop { animation: drop-in 650ms cubic-bezier(.2,.8,.3,1) both; transform: rotate(-4deg); }
+@media (prefers-reduced-motion: reduce) {
+  .burger-drop { animation: none; }
+  * { scroll-behavior: auto !important; }
+}
