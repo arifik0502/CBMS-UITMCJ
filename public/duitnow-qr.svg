@@ -1,8 +1,0 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 300" role="img" aria-label="Placeholder: replace with the business DuitNow QR">
-  <rect width="300" height="300" fill="#fff"/>
-  <rect x="10" y="10" width="280" height="280" fill="none" stroke="#16130F" stroke-width="4" stroke-dasharray="14 10"/>
-  <text x="150" y="132" text-anchor="middle" font-family="sans-serif" font-size="22" font-weight="700" fill="#16130F">DuitNow QR</text>
-  <text x="150" y="162" text-anchor="middle" font-family="sans-serif" font-size="15" fill="#16130F">placeholder</text>
-  <text x="150" y="196" text-anchor="middle" font-family="sans-serif" font-size="12" fill="#555">Replace public/duitnow-qr.svg</text>
-  <text x="150" y="214" text-anchor="middle" font-family="sans-serif" font-size="12" fill="#555">with your real QR image</text>
-</svg>
