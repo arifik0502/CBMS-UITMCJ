@@ -1,0 +1,10 @@
+{
+  // Static site served by Workers Static Assets (free; no Worker script, so no Workers requests are used).
+  "name": "cbms-customer",
+  "compatibility_date": "2026-11-16",
+  "assets": {
+    "directory": "./dist",
+    // Refreshing /order or /track/<token> must return the app, not a 404.
+    "not_found_handling": "single-page-application"
+  }
+}

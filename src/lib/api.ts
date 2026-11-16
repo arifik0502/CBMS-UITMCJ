@@ -12,6 +12,7 @@ export const getStorefront = () => rpc<Storefront>("get_storefront");
 export const createOrder = (a: {
   name: string; phone: string; buildingId: string; floor: number; room: string;
   quantity: number; method: PaymentMethod; idempotencyKey: string;
+  tripId: string; note: string | null;
 }) =>
   rpc<OrderTicket>("create_order", {
     p_customer_name: a.name,
@@ -21,7 +22,9 @@ export const createOrder = (a: {
     p_room_number: a.room,
     p_quantity: a.quantity,
     p_payment_method: a.method,
-    p_idempotency_key: a.idempotencyKey
+    p_idempotency_key: a.idempotencyKey,
+    p_trip_id: a.tripId,
+    p_note: a.note
   });
 
 export const getOrder = (token: string) => rpc<OrderView>("get_order_by_token", { p_token: token });

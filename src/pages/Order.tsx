@@ -1,4 +1,4 @@
-import { useMemo, useState, type FormEvent } from "react";
+import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button, ErrorScreen, Field, Header, inputClass, LinkButton, LoadingScreen, Notice, Shell } from "../components/ui";
 import { createOrder } from "../lib/api";
@@ -8,8 +8,9 @@ import {
   IDEMPOTENCY_KEY, LAST_ORDER_KEY, safeSessionGet, safeSessionRemove, safeSessionSet, safeSet
 } from "../lib/storage";
 import { useStorefront } from "../lib/useStorefront";
+import { tripHasEndedToday, tripIsSelectable } from "../lib/trips";
 import {
-  normalizePhone, normalizeRoom, validateOrder, type FormErrors, type OrderFormValues
+  normalizePhone, normalizeRoom, NOTE_MAX, validateOrder, type FormErrors, type OrderFormValues
 } from "../lib/validation";
 
 function idempotencyKey(): string {
@@ -25,11 +26,18 @@ export default function OrderPage() {
   const { data, error, loading, reload } = useStorefront();
   const navigate = useNavigate();
   const [values, setValues] = useState<OrderFormValues>({
-    name: "", phone: "", buildingId: "", floor: "", room: "", quantity: 1, method: ""
+    name: "", phone: "", buildingId: "", floor: "", room: "", quantity: 1, method: "",
+    tripId: "", custom: false, note: ""
   });
   const [errors, setErrors] = useState<FormErrors>({});
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
+  const [clock, setClock] = useState(() => new Date());
+
+  useEffect(() => {
+    const timer = window.setInterval(() => setClock(new Date()), 15000);
+    return () => window.clearInterval(timer);
+  }, []);
 
   const building = useMemo(() => data?.buildings.find((b) => b.id === values.buildingId), [data, values.buildingId]);
 
@@ -40,7 +48,11 @@ export default function OrderPage() {
   const available = data.available_stock;
   const maxQty = Math.max(1, Math.min(data.max_qty_per_order, available));
 
-  if (!product || !data.accepting_orders || available <= 0) {
+  const anyTripOpen = data.trips.some(
+    (trip) => trip.closed_reason === null && !tripHasEndedToday(trip, clock)
+  );
+
+  if (!product || !data.accepting_orders || available <= 0 || !anyTripOpen) {
     return (
       <Shell>
         <Header back="/" />
@@ -48,7 +60,11 @@ export default function OrderPage() {
           <p className="font-display text-3xl font-extrabold">
             {available <= 0 ? "Sold out" : "Ordering is closed"}
           </p>
-          <p className="text-sm font-medium">Check back at the next selling session.</p>
+          <p className="text-sm font-medium">
+            {available > 0 && data.accepting_orders
+              ? "All of today's trips have closed. See you at the next session."
+              : "Check back at the next selling session."}
+          </p>
           <LinkButton to="/" variant="secondary">Back to menu</LinkButton>
         </div>
       </Shell>
@@ -65,7 +81,23 @@ export default function OrderPage() {
 
   async function onSubmit(ev: FormEvent) {
     ev.preventDefault();
-    if (submitting) return;
+    if (submitting || !data) return;
+    const selectedTrip = data.trips.find((trip) => trip.id === values.tripId);
+    if (values.tripId && (
+      !selectedTrip ||
+      !tripIsSelectable(selectedTrip, new Date())
+    )) {
+      const ended = selectedTrip ? tripHasEndedToday(selectedTrip, new Date()) : false;
+      const message = ended
+        ? "This trip has already ended for today. Choose another trip."
+        : "This trip is no longer available. Choose another trip.";
+      setClock(new Date());
+      setValues((current) => ({ ...current, tripId: "" }));
+      setErrors((current) => ({ ...current, tripId: message }));
+      setSubmitError(message);
+      return;
+    }
+
     const found = validateOrder(values, maxQty);
     setErrors(found);
     if (Object.keys(found).length > 0) {
@@ -84,7 +116,9 @@ export default function OrderPage() {
         room: normalizeRoom(values.room),
         quantity: values.quantity,
         method: values.method as "CASH" | "DUITNOW",
-        idempotencyKey: idempotencyKey()
+        idempotencyKey: idempotencyKey(),
+        tripId: values.tripId,
+        note: values.custom ? values.note.trim() : null
       });
       safeSessionRemove(IDEMPOTENCY_KEY);
       safeSet(LAST_ORDER_KEY, ticket.tracking_token);
@@ -200,6 +234,68 @@ export default function OrderPage() {
                 onChange={(e) => set("room", e.target.value)} {...aria("room")} />
             </div>
           </Field>
+        </section>
+
+        <section className="ticket p-5">
+          <fieldset aria-describedby={err("tripId") ? "tripId-error" : undefined}>
+            <legend className="font-display text-xl font-extrabold">Pick your delivery trip</legend>
+            <p className="mt-1 text-sm text-muted">Each delivery window lasts 15 minutes. You can place an order until that window ends—there is no early cutoff. Ended trips are disabled automatically using Malaysia time.</p>
+            <div className="mt-3 space-y-3">
+              {data.trips.map((t) => {
+                const ended = tripHasEndedToday(t, clock);
+                const closed = t.closed_reason !== null || ended;
+                return (
+                  <label key={t.id}
+                    className={`flex min-h-14 items-start gap-3 rounded-xl border-2 border-ink p-3 ${closed ? "cursor-not-allowed bg-line/50 opacity-60" : "cursor-pointer"} ${values.tripId === t.id ? "bg-bun" : closed ? "" : "bg-white"} has-[:focus-visible]:outline-3 has-[:focus-visible]:outline-ketchup`}>
+                    <input type="radio" name="trip" value={t.id} disabled={closed} checked={values.tripId === t.id}
+                      onChange={() => set("tripId", t.id)} className="mt-1 size-5 accent-ink" />
+                    <span>
+                      <span className="block font-bold">{t.label}: {t.start_label} to {t.end_label}</span>
+                      <span className="block text-sm text-muted">
+                        {ended || t.closed_reason === "ENDED"
+                          ? "This trip has ended for today"
+                          : closed
+                            ? t.closed_reason === "TEAM" ? "Closed by the team" : `Orders closed at ${t.closes_label}`
+                            : `Order until ${t.end_label} · 15-minute delivery window`}
+                      </span>
+                    </span>
+                  </label>
+                );
+              })}
+            </div>
+            {err("tripId") && <p id="tripId-error" role="alert" className="mt-2 text-sm font-semibold text-ketchup">{err("tripId")}</p>}
+          </fieldset>
+        </section>
+
+        <section className="ticket p-5">
+          <fieldset>
+            <legend className="font-display text-xl font-extrabold">Your burger</legend>
+            <div className="mt-3 space-y-3">
+              {([
+                { custom: false, title: "Standard", body: "Just like the menu." },
+                { custom: true, title: "Custom", body: "Add a note for the kitchen, e.g. no sauce." }
+              ] as const).map((o) => (
+                <label key={o.title}
+                  className={`flex min-h-14 cursor-pointer items-start gap-3 rounded-xl border-2 border-ink p-3 ${values.custom === o.custom ? "bg-bun" : "bg-white"} has-[:focus-visible]:outline-3 has-[:focus-visible]:outline-ketchup`}>
+                  <input type="radio" name="burgerType" checked={values.custom === o.custom}
+                    onChange={() => set("custom", o.custom)} className="mt-1 size-5 accent-ink" />
+                  <span>
+                    <span className="block font-bold">{o.title}</span>
+                    <span className="block text-sm text-muted">{o.body}</span>
+                  </span>
+                </label>
+              ))}
+            </div>
+            {values.custom && (
+              <div className="mt-4">
+                <Field label="Note for the kitchen" htmlFor="note" error={err("note")}
+                  hint={`${values.note.trim().length}/${NOTE_MAX}. The note applies to all burgers in this order. For allergies, tell the seller directly.`}>
+                  <textarea id="note" rows={3} maxLength={NOTE_MAX} className={inputClass} value={values.note}
+                    placeholder="e.g. no sauce, extra spicy" onChange={(e) => set("note", e.target.value)} {...aria("note")} />
+                </Field>
+              </div>
+            )}
+          </fieldset>
         </section>
 
         <section className="ticket p-5">

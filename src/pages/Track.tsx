@@ -70,6 +70,15 @@ export default function TrackPage() {
             <span className="font-bold">Total</span>
             <span className="font-display text-xl font-extrabold">{formatRM(order.total_cents)}</span>
           </div>
+          {order.trip_label && (
+            <div className="pt-1">
+              <p className="font-semibold">{order.trip_label}: {order.trip_window}</p>
+              <p className="text-sm text-muted">This delivery window lasts 15 minutes. Estimated delivery is 10–15 minutes after the trip starts.</p>
+            </div>
+          )}
+          {order.note && (
+            <p className="rounded-lg border-2 border-ink bg-bun/60 px-3 py-2 font-semibold">Custom: {order.note}</p>
+          )}
           <p className="pt-1 text-muted">
             Deliver to {order.customer_name}, {roomLabel(order.building_code, order.room_number)} (floor {order.floor_number}).
             {" "}{order.payment_method === "CASH" ? "Paying cash on delivery." : "Paying by DuitNow QR."}

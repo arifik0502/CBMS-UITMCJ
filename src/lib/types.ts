@@ -15,6 +15,18 @@ export interface Building {
   floors: number[];
 }
 
+export interface Trip {
+  id: string;
+  trip_no: number;
+  label: string;
+  start_time: string;
+  end_time: string;
+  start_label: string;
+  end_label: string;
+  closes_label: string;
+  closed_reason: "TEAM" | "CUTOFF" | "ENDED" | null;
+}
+
 export interface Storefront {
   business_name: string;
   accepting_orders: boolean;
@@ -24,6 +36,7 @@ export interface Storefront {
   product: { id: string; name: string; description: string; price_cents: number } | null;
   available_stock: number;
   buildings: Building[];
+  trips: Trip[];
 }
 
 export interface OrderTicket {
@@ -46,6 +59,9 @@ export interface OrderView {
   building_code: string;
   floor_number: number;
   room_number: string;
+  trip_label: string | null;
+  trip_window: string | null;
+  note: string | null;
   receipt_submitted: boolean;
   rejection_reason: string | null;
   cancelled_reason: string | null;

@@ -1,11 +1,19 @@
+import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { ErrorScreen, LinkButton, LoadingScreen, Pill, Shell } from "../components/ui";
 import { formatRM } from "../lib/format";
 import { LAST_ORDER_KEY, safeGet } from "../lib/storage";
+import { tripHasEndedToday, tripIsSelectable } from "../lib/trips";
 import { useStorefront } from "../lib/useStorefront";
 
 export default function Home() {
   const { data, error, loading, reload } = useStorefront();
+  const [clock, setClock] = useState(() => new Date());
+
+  useEffect(() => {
+    const timer = window.setInterval(() => setClock(new Date()), 15000);
+    return () => window.clearInterval(timer);
+  }, []);
   const lastToken = safeGet(LAST_ORDER_KEY);
 
   if (loading) return <Shell><LoadingScreen label="Loading menu" /></Shell>;
@@ -13,7 +21,8 @@ export default function Home() {
 
   const p = data.product;
   const soldOut = data.available_stock <= 0;
-  const canOrder = data.accepting_orders && p !== null && !soldOut;
+  const anyTripOpen = data.trips.some((t) => tripIsSelectable(t, clock));
+  const canOrder = data.accepting_orders && p !== null && !soldOut && anyTripOpen;
   const low = data.available_stock > 0 && data.available_stock <= 10;
 
   return (
@@ -61,7 +70,11 @@ export default function Home() {
           <LinkButton to="/order">Order now</LinkButton>
         ) : (
           <p className="text-center text-sm font-semibold">
-            {soldOut ? "We have sold out this session. Check back next time." : "Ordering is closed right now."}
+            {soldOut
+              ? "We have sold out this session. Check back next time."
+              : data.accepting_orders && !anyTripOpen
+                ? "All of today's trips have closed. See you next session."
+                : "Ordering is closed right now."}
           </p>
         )}
       </section>
@@ -74,10 +87,30 @@ export default function Home() {
         <div className="tear" />
         <ol className="space-y-3 p-5 text-sm font-medium">
           <li><strong>1.</strong> Pick how many burgers.</li>
-          <li><strong>2.</strong> Tell us your building, floor and room.</li>
-          <li><strong>3.</strong> Pay cash on delivery or by DuitNow QR.</li>
-          <li><strong>4.</strong> We bring it to your room.</li>
+          <li><strong>2.</strong> Pick your delivery trip.</li>
+          <li><strong>3.</strong> Tell us your building, floor and room. Add a note if you want it custom.</li>
+          <li><strong>4.</strong> Pay cash on delivery or by DuitNow QR.</li>
+          <li><strong>5.</strong> We bring it to your room.</li>
         </ol>
+        {data.trips.length > 0 && (
+          <>
+            <div className="tear" />
+            <div className="p-5">
+              <h3 className="font-display text-lg font-extrabold">Delivery trips</h3>
+              <p className="mt-1 text-sm text-muted">Each delivery window lasts 15 minutes. Orders stay open until the selected window ends.</p>
+              <ul className="mt-3 space-y-2 text-sm">
+                {data.trips.map((t) => (
+                  <li key={t.id} className="flex items-center justify-between gap-3">
+                    <span className="font-semibold">{t.label}: {t.start_label} to {t.end_label}</span>
+                    <span className={`shrink-0 rounded-full border-2 border-ink px-2.5 py-0.5 text-xs font-bold ${t.closed_reason || tripHasEndedToday(t, clock) ? "bg-line" : "bg-pickle text-white"}`}>
+                      {tripHasEndedToday(t, clock) || t.closed_reason === "ENDED" ? "Ended today" : t.closed_reason ? "Closed" : `Order until ${t.end_label}`}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </>
+        )}
         {data.buildings.length > 0 && (
           <>
             <div className="tear" />
