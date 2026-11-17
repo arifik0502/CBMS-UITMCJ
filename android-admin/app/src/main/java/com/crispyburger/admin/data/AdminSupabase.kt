@@ -155,11 +155,15 @@ object AdminSupabase {
             BuildConfig.SUPABASE_ANON_KEY.isNotBlank()
 
     fun friendlyError(error: Throwable, fallback: String): String {
-        val message = error.message.orEmpty().lowercase()
+        val message = generateSequence(error as Throwable?) { it.cause }
+            .mapNotNull { it.message }
+            .joinToString(" ")
+            .lowercase()
+
         return when {
             message.contains("trip_date") &&
                 (message.contains("does not exist") || message.contains("42703")) ->
-                "The Supabase database is missing the CBMS trips migration. Check migration 20261116000001_trips_notes_commission.sql, then refresh."
+                "The Supabase database is missing the CBMS trips migration. Check the trips migration, then refresh."
 
             message.contains("does not exist") &&
                 (message.contains("column") || message.contains("relation")) ->
@@ -172,10 +176,10 @@ object AdminSupabase {
                 "This order is no longer awaiting cash collection. Refresh the order and check its payment status."
 
             message.contains("below_reserved") ->
-                "Inventory adjustment rejected: physical stock cannot be lower than reserved stock. Refresh inventory and check the latest physical and reserved quantities. If this happened during Restock while physical stock was already above reserved stock, the database inventory row may differ from the displayed values."
+                "Inventory adjustment rejected: the database says physical stock would fall below reserved stock. Refresh inventory. If Restock is failing while physical stock is already above reserved stock, the live adjust_inventory function or its adjustment-type mapping needs to be checked."
 
             message.contains("not_out_for_delivery") ->
-                "The live collect_cash function still has the old delivery restriction. Apply migration 20261117000005_owner_cash_payment_controls.sql in Supabase, then retry."
+                "The live collect_cash function still has the old delivery restriction. Apply the latest cash-payment migration in Supabase, then retry."
 
             message.contains("order_closed") ->
                 "This order is cancelled or closed and cannot accept cash."
@@ -184,9 +188,9 @@ object AdminSupabase {
                 "This order could not be found. Refresh the order list."
 
             message.contains("permission denied") ->
-                "Supabase denied this operation. Apply the latest CBMS permissions migration and verify the active developer OWNER account."
+                "Supabase denied this operation. Verify the active developer OWNER account and database permissions."
 
-            else -> "$fallback Details: ${error.message.orEmpty().take(220)}"
+            else -> fallback
         }
     }
 

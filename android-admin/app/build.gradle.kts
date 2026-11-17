@@ -27,8 +27,8 @@ android {
         applicationId = "com.crispyburger.admin"
         minSdk = 26
         targetSdk = 35
-        versionCode = 8
-        versionName = "0.2.6"
+        versionCode = 9
+        versionName = "0.2.7"
         buildConfigField("String", "SUPABASE_URL", "\"${localProps.getProperty("supabase.url", "")}\"")
         buildConfigField("String", "SUPABASE_ANON_KEY", "\"${localProps.getProperty("supabase.anonKey", "")}\"")
     }
