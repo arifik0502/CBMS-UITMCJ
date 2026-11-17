@@ -1,63 +1,143 @@
-import { useState } from "react";
-import { cancelOrder } from "../lib/api";
-import { friendlyError } from "../lib/errors";
-import { Notice, Spinner } from "./ui";
+import type { ButtonHTMLAttributes, ReactNode } from "react";
+import { Link } from "react-router-dom";
 
-/** "Cancel order" with a quick yes/no check. It never asks for a reason. */
-export default function CancelOrder({ token, onCancelled }: { token: string; onCancelled: () => void }) {
-  const [confirming, setConfirming] = useState(false);
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  async function doCancel() {
-    if (busy) return;
-    setBusy(true);
-    setError(null);
-    try {
-      await cancelOrder(token);
-      onCancelled();
-    } catch (e) {
-      setError(friendlyError(e));
-      setBusy(false);
-    }
-  }
-
-  if (!confirming) {
-    return (
-      <button
-        type="button"
-        onClick={() => setConfirming(true)}
-        className="min-h-12 w-full rounded-xl border-2 border-ketchup bg-paper px-5 py-3 text-base font-bold text-ketchup active:translate-y-0.5"
-      >
-        Cancel order
-      </button>
-    );
-  }
-
+export function Shell({ children, wide = false }: { children: ReactNode; wide?: boolean }) {
   return (
-    <div className="space-y-3 rounded-xl border-2 border-ketchup bg-paper p-4">
-      <p className="font-bold">Cancel this order?</p>
-      <p className="text-sm text-muted">Your burgers will be released and the order will stop.</p>
-      {error && <Notice tone="error">{error}</Notice>}
-      <div className="grid grid-cols-2 gap-3">
-        <button
-          type="button"
-          onClick={doCancel}
-          disabled={busy}
-          className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl border-2 border-ink bg-ketchup px-3 py-3 font-bold text-white disabled:opacity-60"
-        >
-          {busy && <Spinner />}
-          Yes, cancel
-        </button>
-        <button
-          type="button"
-          onClick={() => { setConfirming(false); setError(null); }}
-          disabled={busy}
-          className="min-h-12 rounded-xl border-2 border-ink bg-white px-3 py-3 font-bold disabled:opacity-60"
-        >
-          Keep order
-        </button>
-      </div>
+    <div className={`mx-auto w-full ${wide ? "max-w-3xl" : "max-w-md"} px-4 pb-28 pt-[max(1rem,env(safe-area-inset-top))]`}>
+      {children}
     </div>
+  );
+}
+
+export function Header({ title, back }: { title?: string; back?: string }) {
+  return (
+    <header className="flex items-center justify-between py-3">
+      <Link to="/" className="font-display text-xl font-extrabold tracking-tight">
+        Crispy Burger
+      </Link>
+      {back ? (
+        <Link to={back} className="min-h-11 rounded-full border-2 border-ink px-4 py-2 text-sm font-semibold">
+          Back
+        </Link>
+      ) : title ? (
+        <span className="text-sm font-semibold">{title}</span>
+      ) : null}
+    </header>
+  );
+}
+
+type BtnProps = ButtonHTMLAttributes<HTMLButtonElement> & {
+  variant?: "primary" | "secondary";
+  busy?: boolean;
+};
+
+export function Button({ variant = "primary", busy, className = "", children, disabled, ...rest }: BtnProps) {
+  const base =
+    "inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-xl border-2 border-ink px-5 py-3 text-base font-bold transition-transform active:translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-50";
+  const look =
+    variant === "primary"
+      ? "bg-ink text-bun shadow-[3px_3px_0_0_var(--color-ketchup)]"
+      : "bg-paper text-ink shadow-[3px_3px_0_0_var(--color-ink)]";
+  return (
+    <button className={`${base} ${look} ${className}`} disabled={disabled || busy} {...rest}>
+      {busy && <Spinner />}
+      {children}
+    </button>
+  );
+}
+
+export function LinkButton({ to, children, variant = "primary" }: { to: string; children: ReactNode; variant?: "primary" | "secondary" }) {
+  const look =
+    variant === "primary"
+      ? "bg-ink text-bun shadow-[3px_3px_0_0_var(--color-ketchup)]"
+      : "bg-paper text-ink shadow-[3px_3px_0_0_var(--color-ink)]";
+  return (
+    <Link
+      to={to}
+      className={`inline-flex min-h-12 w-full items-center justify-center rounded-xl border-2 border-ink px-5 py-3 text-base font-bold ${look}`}
+    >
+      {children}
+    </Link>
+  );
+}
+
+export function Spinner() {
+  return (
+    <span
+      role="status"
+      aria-label="Loading"
+      className="inline-block size-4 animate-spin rounded-full border-2 border-current border-t-transparent motion-reduce:animate-none"
+    />
+  );
+}
+
+export function Field({
+  label, htmlFor, error, hint, children
+}: { label: string; htmlFor: string; error?: string; hint?: string; children: ReactNode }) {
+  return (
+    <div>
+      <label htmlFor={htmlFor} className="mb-1.5 block text-sm font-bold">
+        {label}
+      </label>
+      {children}
+      {hint && !error && <p className="mt-1 text-sm text-muted">{hint}</p>}
+      {error && (
+        <p id={`${htmlFor}-error`} role="alert" className="mt-1 text-sm font-semibold text-ketchup">
+          {error}
+        </p>
+      )}
+    </div>
+  );
+}
+
+export const inputClass =
+  "min-h-12 w-full rounded-xl border-2 border-ink bg-white px-3.5 py-2.5 text-base placeholder:text-muted/70 aria-[invalid=true]:border-ketchup disabled:opacity-50";
+
+export function Notice({ tone = "info", children }: { tone?: "info" | "error" | "success"; children: ReactNode }) {
+  const tones = {
+    info: "bg-paper",
+    error: "bg-[#ffe3e0]",
+    success: "bg-[#dff3df]"
+  } as const;
+  return (
+    <div role={tone === "error" ? "alert" : "status"} className={`rounded-xl border-2 border-ink px-4 py-3 text-sm font-semibold ${tones[tone]}`}>
+      {children}
+    </div>
+  );
+}
+
+export function LoadingScreen({ label = "Loading" }: { label?: string }) {
+  return (
+    <div className="flex items-center justify-center gap-3 py-24 font-semibold">
+      <Spinner /> {label}
+    </div>
+  );
+}
+
+export function ErrorScreen({ message, onRetry }: { message: string; onRetry?: () => void }) {
+  return (
+    <div className="space-y-4 py-16 text-center">
+      <p className="font-display text-2xl font-extrabold">That did not load</p>
+      <p className="text-sm font-medium">{message}</p>
+      {onRetry && (
+        <div className="mx-auto max-w-48">
+          <Button onClick={onRetry}>Try again</Button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+export function Pill({ tone, children }: { tone: "good" | "warn" | "bad" | "neutral"; children: ReactNode }) {
+  const tones = {
+    good: "bg-pickle text-white",
+    warn: "bg-bun-deep text-ink",
+    bad: "bg-ketchup text-white",
+    neutral: "bg-paper text-ink"
+  } as const;
+  return (
+    <span className={`inline-flex items-center rounded-full border-2 border-ink px-3 py-1 text-sm font-bold ${tones[tone]}`}>
+      {children}
+    </span>
   );
 }
