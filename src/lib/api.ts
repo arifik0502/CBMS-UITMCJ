@@ -27,6 +27,10 @@ export const createOrder = (a: {
     p_note: a.note
   });
 
+/** Customer self-cancel. Only works for unpaid orders that are not out for delivery. */
+export const cancelOrder = (token: string) =>
+  rpc<{ order_status: string }>("cancel_order_by_token", { p_token: token });
+
 export const getOrder = (token: string) => rpc<OrderView>("get_order_by_token", { p_token: token });
 
 /** Upload the receipt image to the private bucket, then attach it to the order. */
