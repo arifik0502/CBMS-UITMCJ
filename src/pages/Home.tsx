@@ -97,7 +97,7 @@ export default function Home() {
             <div className="tear" />
             <div className="p-5">
               <h3 className="font-display text-lg font-extrabold">Delivery trips</h3>
-              <p className="mt-1 text-sm text-muted">Each delivery window lasts 15 minutes. Orders stay open until the selected window ends.</p>
+              <p className="mt-1 text-sm text-muted">Choose the delivery window that suits you. Orders stay open until that window ends.</p>
               <ul className="mt-3 space-y-2 text-sm">
                 {data.trips.map((t) => (
                   <li key={t.id} className="flex items-center justify-between gap-3">

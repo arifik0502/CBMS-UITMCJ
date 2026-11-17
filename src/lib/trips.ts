@@ -23,3 +23,10 @@ export function tripHasEndedToday(trip: Trip, now: Date): boolean {
 export function tripIsSelectable(trip: Trip, now: Date): boolean {
   return trip.closed_reason === null && !tripHasEndedToday(trip, now);
 }
+
+export function tripDurationMinutes(trip: Trip): number {
+  const [startHour, startMinute] = trip.start_time.split(":").map(Number);
+  const [endHour, endMinute] = trip.end_time.split(":").map(Number);
+  if (![startHour, startMinute, endHour, endMinute].every(Number.isInteger)) return 0;
+  return Math.max(0, endHour * 60 + endMinute - startHour * 60 - startMinute);
+}

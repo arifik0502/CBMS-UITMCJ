@@ -73,7 +73,7 @@ export default function TrackPage() {
           {order.trip_label && (
             <div className="pt-1">
               <p className="font-semibold">{order.trip_label}: {order.trip_window}</p>
-              <p className="text-sm text-muted">This delivery window lasts 15 minutes. Estimated delivery is 10–15 minutes after the trip starts.</p>
+              <p className="text-sm text-muted">Your order is scheduled within this delivery window. Please keep your phone nearby.</p>
             </div>
           )}
           {order.note && (

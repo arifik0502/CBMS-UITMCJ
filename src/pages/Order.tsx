@@ -8,7 +8,7 @@ import {
   IDEMPOTENCY_KEY, LAST_ORDER_KEY, safeSessionGet, safeSessionRemove, safeSessionSet, safeSet
 } from "../lib/storage";
 import { useStorefront } from "../lib/useStorefront";
-import { tripHasEndedToday, tripIsSelectable } from "../lib/trips";
+import { tripDurationMinutes, tripHasEndedToday, tripIsSelectable } from "../lib/trips";
 import {
   normalizePhone, normalizeRoom, NOTE_MAX, validateOrder, type FormErrors, type OrderFormValues
 } from "../lib/validation";
@@ -33,6 +33,7 @@ export default function OrderPage() {
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [clock, setClock] = useState(() => new Date());
+  const [cartHasItem, setCartHasItem] = useState(true);
 
   useEffect(() => {
     const timer = window.setInterval(() => setClock(new Date()), 15000);
@@ -71,7 +72,7 @@ export default function OrderPage() {
     );
   }
 
-  const total = product.price_cents * values.quantity;
+  const total = cartHasItem ? product.price_cents * values.quantity : 0;
 
   function set<K extends keyof OrderFormValues>(key: K, value: OrderFormValues[K]) {
     setValues((v) => ({ ...v, [key]: value }));
@@ -79,9 +80,25 @@ export default function OrderPage() {
     setSubmitError(null);
   }
 
+  function cancelCart() {
+    if (!window.confirm("Cancel this cart and return to the menu? Your selections will be cleared.")) return;
+    setCartHasItem(false);
+    setValues({
+      name: "", phone: "", buildingId: "", floor: "", room: "", quantity: 1, method: "",
+      tripId: "", custom: false, note: ""
+    });
+    setErrors({});
+    setSubmitError(null);
+    navigate("/", { replace: true });
+  }
+
   async function onSubmit(ev: FormEvent) {
     ev.preventDefault();
     if (submitting || !data) return;
+    if (!cartHasItem) {
+      setSubmitError("Your cart is empty. Add a burger before checking out.");
+      return;
+    }
     const selectedTrip = data.trips.find((trip) => trip.id === values.tripId);
     if (values.tripId && (
       !selectedTrip ||
@@ -145,51 +162,75 @@ export default function OrderPage() {
   return (
     <Shell>
       <Header back="/" />
-      <h1 className="font-display text-3xl font-extrabold tracking-tight">Your order</h1>
+      <h1 className="font-display text-3xl font-extrabold tracking-tight">Your cart</h1>
+      <p className="mt-1 text-sm text-muted">Review your burger, choose a delivery trip and complete checkout.</p>
 
       <form onSubmit={onSubmit} noValidate className="mt-4 space-y-5">
-        <section className="ticket">
-          <div className="flex items-center justify-between gap-3 p-5">
+        <section className="ticket space-y-4 p-5">
+          <div className="flex items-center justify-between gap-3">
             <div>
-              <p className="font-display text-lg font-extrabold leading-tight">{product.name}</p>
-              <p className="text-sm text-muted">{formatRM(product.price_cents)} each</p>
+              <h2 className="font-display text-xl font-extrabold">Shopping cart</h2>
+              <p className="text-sm text-muted">{cartHasItem ? `${values.quantity} burger${values.quantity === 1 ? "" : "s"} in your cart` : "No items added yet"}</p>
             </div>
-            <div className="flex items-center gap-1" role="group" aria-label="Quantity">
-              <button
-                type="button"
-                aria-label="Fewer burgers"
-                disabled={values.quantity <= 1}
-                onClick={() => set("quantity", values.quantity - 1)}
-                className="grid size-11 place-items-center rounded-full border-2 border-ink bg-white text-2xl font-bold disabled:opacity-40"
-              >
-                −
-              </button>
-              <output aria-live="polite" className="w-10 text-center font-display text-2xl font-extrabold">
-                {values.quantity}
-              </output>
-              <button
-                type="button"
-                aria-label="More burgers"
-                disabled={values.quantity >= maxQty}
-                onClick={() => set("quantity", values.quantity + 1)}
-                className="grid size-11 place-items-center rounded-full border-2 border-ink bg-white text-2xl font-bold disabled:opacity-40"
-              >
-                +
-              </button>
+            <span className="rounded-full border-2 border-ink bg-bun px-3 py-1 text-sm font-bold">{cartHasItem ? values.quantity : 0} item{cartHasItem && values.quantity !== 1 ? "s" : ""}</span>
+          </div>
+
+          {cartHasItem ? (
+            <>
+              <div className="rounded-xl border-2 border-ink bg-white p-4">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <p className="font-display text-lg font-extrabold">{product.name}</p>
+                    <p className="text-sm text-muted">{formatRM(product.price_cents)} each</p>
+                  </div>
+                  <button type="button" onClick={() => { setCartHasItem(false); setSubmitError(null); }}
+                    className="min-h-10 rounded-lg px-3 text-sm font-bold text-ketchup underline underline-offset-2">
+                    Remove
+                  </button>
+                </div>
+                <div className="mt-4 flex items-center justify-between gap-3">
+                  <span className="text-sm font-semibold">Quantity</span>
+                  <div className="flex items-center gap-2" role="group" aria-label="Cart quantity">
+                    <button type="button" aria-label="Decrease quantity" disabled={values.quantity <= 1}
+                      onClick={() => set("quantity", values.quantity - 1)}
+                      className="grid size-10 place-items-center rounded-full border-2 border-ink bg-paper text-xl font-bold disabled:opacity-40">−</button>
+                    <output aria-live="polite" className="w-8 text-center font-display text-xl font-extrabold">{values.quantity}</output>
+                    <button type="button" aria-label="Increase quantity" disabled={values.quantity >= maxQty}
+                      onClick={() => set("quantity", values.quantity + 1)}
+                      className="grid size-10 place-items-center rounded-full border-2 border-ink bg-paper text-xl font-bold disabled:opacity-40">+</button>
+                  </div>
+                </div>
+                {available <= 10 && <p className="mt-3 text-sm font-semibold text-ketchup">Only {available} left in stock.</p>}
+              </div>
+
+              <div className="space-y-2 text-sm">
+                <div className="flex justify-between"><span>Subtotal</span><span className="font-semibold">{formatRM(total)}</span></div>
+                <div className="flex justify-between"><span>Delivery</span><span className="font-semibold">Included</span></div>
+                <div className="flex justify-between border-t-2 border-ink pt-3 text-base">
+                  <span className="font-bold">Total</span><span className="font-display text-2xl font-extrabold">{formatRM(total)}</span>
+                </div>
+              </div>
+              <a href="#checkout-details" className="inline-flex min-h-12 w-full items-center justify-center rounded-xl border-2 border-ink bg-ink px-5 py-3 text-base font-bold text-bun shadow-[3px_3px_0_0_var(--color-ketchup)]">
+                Continue to checkout
+              </a>
+            </>
+          ) : (
+            <div className="space-y-3 rounded-xl border-2 border-dashed border-ink p-4 text-center">
+              <p className="font-bold">Your cart is empty</p>
+              <p className="text-sm text-muted">Add a crispy chicken burger to continue.</p>
+              <Button type="button" onClick={() => setCartHasItem(true)}>Add burger</Button>
             </div>
-          </div>
-          <div className="tear" />
-          <div className="flex items-baseline justify-between p-5">
-            <span className="text-sm font-bold">Total</span>
-            <span className="font-display text-4xl font-extrabold">{formatRM(total)}</span>
-          </div>
-          {available <= 10 && (
-            <p className="px-5 pb-4 text-sm font-semibold text-ketchup">Only {available} left.</p>
           )}
+          <button type="button" onClick={cancelCart}
+            className="min-h-11 w-full rounded-xl border-2 border-ketchup bg-paper px-4 py-2.5 text-sm font-bold text-ketchup">
+            Cancel cart
+          </button>
         </section>
 
-        <section className="ticket space-y-4 p-5">
-          <h2 className="font-display text-xl font-extrabold">Where to deliver</h2>
+        {cartHasItem && (
+          <>
+        <section id="checkout-details" className="ticket space-y-4 p-5">
+          <h2 className="font-display text-xl font-extrabold">Delivery details</h2>
 
           <Field label="Your name" htmlFor="name" error={err("name")}>
             <input id="name" className={inputClass} autoComplete="name" value={values.name}
@@ -239,7 +280,7 @@ export default function OrderPage() {
         <section className="ticket p-5">
           <fieldset aria-describedby={err("tripId") ? "tripId-error" : undefined}>
             <legend className="font-display text-xl font-extrabold">Pick your delivery trip</legend>
-            <p className="mt-1 text-sm text-muted">Each delivery window lasts 15 minutes. You can place an order until that window ends—there is no early cutoff. Ended trips are disabled automatically using Malaysia time.</p>
+            <p className="mt-1 text-sm text-muted">Choose your preferred delivery time. Orders remain open until the selected trip ends. All times use Malaysia time.</p>
             <div className="mt-3 space-y-3">
               {data.trips.map((t) => {
                 const ended = tripHasEndedToday(t, clock);
@@ -256,7 +297,7 @@ export default function OrderPage() {
                           ? "This trip has ended for today"
                           : closed
                             ? t.closed_reason === "TEAM" ? "Closed by the team" : `Orders closed at ${t.closes_label}`
-                            : `Order until ${t.end_label} · 15-minute delivery window`}
+                            : `Order until ${t.end_label} · ${tripDurationMinutes(t)}-minute delivery window`}
                       </span>
                     </span>
                   </label>
@@ -323,9 +364,11 @@ export default function OrderPage() {
 
         {submitError && <Notice tone="error">{submitError}</Notice>}
 
-        <Button type="submit" busy={submitting}>
+        <Button type="submit" busy={submitting} disabled={!cartHasItem}>
           {submitting ? "Placing order" : `Place order · ${formatRM(total)}`}
         </Button>
+          </>
+        )}
       </form>
     </Shell>
   );
