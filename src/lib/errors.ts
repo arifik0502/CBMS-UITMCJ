@@ -20,6 +20,8 @@ const MESSAGES: Record<string, (hint?: string | null) => string> = {
   PAYMENT_ALREADY_SETTLED: () => "Payment for this order is already confirmed.",
   RECEIPT_NOT_FOUND: () => "The upload did not finish. Try again.",
   INVALID_RECEIPT_PATH: () => "The upload could not be linked to your order. Try again.",
+  CANNOT_CANCEL_ON_THE_WAY: () => "Your order is already on the way, so it cannot be cancelled now.",
+  CANNOT_CANCEL_PAID: () => "This order is already paid or being checked. Message the team to cancel it.",
   NOT_A_QR_ORDER: () => "This order is paid in cash."
 };
 
