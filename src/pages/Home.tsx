@@ -67,7 +67,7 @@ export default function Home() {
           )}
         </div>
         {canOrder ? (
-          <LinkButton to="/order">Order now</LinkButton>
+          <LinkButton to="/order">click here to order</LinkButton>
         ) : (
           <p className="text-center text-sm font-semibold">
             {soldOut
