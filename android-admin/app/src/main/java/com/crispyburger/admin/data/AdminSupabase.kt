@@ -13,6 +13,7 @@ import io.github.jan.supabase.postgrest.query.Columns
 import io.github.jan.supabase.postgrest.query.Order
 import io.github.jan.supabase.postgrest.rpc
 import io.github.jan.supabase.realtime.Realtime
+import io.github.jan.supabase.storage.Storage
 import io.github.jan.supabase.storage.storage
 import kotlin.time.Duration.Companion.minutes
 import java.time.Instant
@@ -206,6 +207,7 @@ object AdminSupabase {
             install(Auth)
             install(Postgrest)
             install(Realtime)
+            install(Storage)
         }
     }
 
