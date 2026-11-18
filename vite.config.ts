@@ -24,9 +24,31 @@ export default defineConfig({
         ]
       },
       workbox: {
-        // Never cache API/RPC traffic; only the app shell and static assets.
+        // Precache the app shell and versioned static assets for reliable offline startup.
         navigateFallback: "/index.html",
-        globPatterns: ["**/*.{js,css,html,svg,woff2}"]
+        globPatterns: ["**/*.{js,css,html,svg,woff2}"],
+        runtimeCaching: [
+          {
+            // Public product/media images may be reused offline. Private receipts never match this rule.
+            urlPattern: /^https:\/\/[a-z0-9-]+\.supabase\.co\/storage\/v1\/object\/public\//i,
+            handler: "CacheFirst",
+            options: {
+              cacheName: "cbms-public-images-v1",
+              expiration: {
+                maxEntries: 60,
+                maxAgeSeconds: 60 * 60 * 24 * 7
+              },
+              cacheableResponse: {
+                statuses: [0, 200]
+              }
+            }
+          },
+          {
+            // Keep all Supabase data, RPC, signed URLs and private storage network-only.
+            urlPattern: /^https:\/\/[a-z0-9-]+\.supabase\.co\//i,
+            handler: "NetworkOnly"
+          }
+        ]
       }
     })
   ]
