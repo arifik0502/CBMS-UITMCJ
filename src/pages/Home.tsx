@@ -7,7 +7,7 @@ import { tripHasEndedToday, tripIsSelectable } from "../lib/trips";
 import { useStorefront } from "../lib/useStorefront";
 
 export default function Home() {
-  const { data, error, loading, reload } = useStorefront();
+  const { data, error, loading, reload, cachedOnly } = useStorefront();
   const [clock, setClock] = useState(() => new Date());
 
   useEffect(() => {
@@ -22,7 +22,7 @@ export default function Home() {
   const p = data.product;
   const soldOut = data.available_stock <= 0;
   const anyTripOpen = data.trips.some((t) => tripIsSelectable(t, clock));
-  const canOrder = data.accepting_orders && p !== null && !soldOut && anyTripOpen;
+  const canOrder = !cachedOnly && data.accepting_orders && p !== null && !soldOut && anyTripOpen;
   const low = data.available_stock > 0 && data.available_stock <= 10;
 
   return (
@@ -56,7 +56,9 @@ export default function Home() {
 
       <section className="mt-6 space-y-4">
         <div className="flex items-center justify-center gap-2">
-          {!data.accepting_orders ? (
+          {cachedOnly ? (
+            <Pill tone="warn">Saved menu · read-only</Pill>
+          ) : !data.accepting_orders ? (
             <Pill tone="bad">Not taking orders</Pill>
           ) : soldOut ? (
             <Pill tone="bad">Sold out</Pill>
@@ -66,7 +68,11 @@ export default function Home() {
             <Pill tone="good">In stock</Pill>
           )}
         </div>
-        {canOrder ? (
+        {cachedOnly ? (
+          <p className="text-center text-sm font-semibold">
+            You're viewing a saved menu. Live stock and delivery times cannot be verified, so ordering is disabled until the website reconnects.
+          </p>
+        ) : canOrder ? (
           <LinkButton to="/order">click here to order</LinkButton>
         ) : (
           <p className="text-center text-sm font-semibold">
