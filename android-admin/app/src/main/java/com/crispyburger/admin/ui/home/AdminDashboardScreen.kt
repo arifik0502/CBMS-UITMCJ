@@ -56,6 +56,7 @@ import com.crispyburger.admin.data.AdminRealtimeManager
 import com.crispyburger.admin.data.AdminSupabase
 import com.crispyburger.admin.data.DeveloperProfile
 import com.crispyburger.admin.notifications.AdminNotificationHelper
+import com.crispyburger.admin.updater.AppUpdateControls
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.awaitCancellation
@@ -272,7 +273,9 @@ fun AdminDashboardScreen(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
-            Text("Order management", style = MaterialTheme.typography.titleLarge)
+            AppUpdateControls()
+
+        Text("Order management", style = MaterialTheme.typography.titleLarge)
             TextButton(onClick = { refresh() }, enabled = !isLoading && !isWorking) {
                 Text("Refresh")
             }
@@ -675,3 +678,5 @@ private fun formatRinggit(cents: Int): String {
     val amount = cents.coerceAtLeast(0)
     return "RM ${amount / 100}.${(amount % 100).toString().padStart(2, '0')}"
 }
+
+
