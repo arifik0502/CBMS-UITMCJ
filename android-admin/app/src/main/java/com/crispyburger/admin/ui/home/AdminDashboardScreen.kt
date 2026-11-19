@@ -82,7 +82,7 @@ fun AdminDashboardScreen(
     var errorMessage by remember { mutableStateOf<String?>(null) }
     var infoMessage by remember { mutableStateOf<String?>(null) }
     var searchText by remember { mutableStateOf("") }
-    var statusFilter by remember { mutableStateOf("ALL") }
+    var statusFilter by remember { mutableStateOf("ACTIVE") }
     var selectedOrder by remember { mutableStateOf<AdminOrder?>(null) }
     var paymentInfo by remember { mutableStateOf<AdminPayment?>(null) }
     var paymentLoading by remember { mutableStateOf(false) }
@@ -186,8 +186,7 @@ fun AdminDashboardScreen(
         val matchesStatus = when (statusFilter) {
             "PAYMENT" -> order.paymentStatus == "PENDING_VERIFICATION"
             "ACTIVE" -> order.orderStatus !in listOf("DELIVERED", "CANCELLED")
-            "DELIVERED" -> order.orderStatus == "DELIVERED"
-            "CANCELLED" -> order.orderStatus == "CANCELLED"
+            "ARCHIVE" -> order.orderStatus in listOf("DELIVERED", "CANCELLED")
             else -> true
         }
         matchesSearch && matchesStatus
@@ -227,7 +226,7 @@ fun AdminDashboardScreen(
             ) {
                 Text("Developer access active", fontWeight = FontWeight.SemiBold)
                 Text(
-                    "Only the approved developer account can use this admin workspace. Staff invitations and seller assignment remain disabled.",
+                    "Only the approved developer account can use this admin workspace. Order preparation and delivery milestones are managed here.",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -293,7 +292,7 @@ fun AdminDashboardScreen(
                 .horizontalScroll(rememberScrollState()),
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            listOf("ALL", "PAYMENT", "ACTIVE", "DELIVERED", "CANCELLED").forEach { filter ->
+            listOf("ACTIVE", "PAYMENT", "ARCHIVE").forEach { filter ->
                 FilterChip(
                     selected = statusFilter == filter,
                     onClick = { statusFilter = filter },
@@ -443,7 +442,7 @@ fun AdminDashboardScreen(
                         }
                     }
 
-                    if (order.orderStatus != "CANCELLED" && order.paymentStatus == "CASH_PENDING") {
+                    if (order.orderStatus in listOf("OUT_FOR_DELIVERY", "DELIVERED") && order.paymentStatus == "CASH_PENDING") {
                         Button(
                             onClick = { performAction { AdminSupabase.collectCash(order.id) } },
                             modifier = Modifier.fillMaxWidth(),
@@ -460,17 +459,31 @@ fun AdminDashboardScreen(
                                 performAction { AdminSupabase.updateOrderStatus(order.id, nextStatus) }
                             },
                             modifier = Modifier.fillMaxWidth(),
-                            enabled = !isWorking
+                            enabled = !isWorking && !(
+                                nextStatus == "DELIVERED" &&
+                                    order.paymentMethod == "DUITNOW" &&
+                                    order.paymentStatus != "VERIFIED"
+                                )
                         ) {
-                            Text("Move to ${statusLabel(nextStatus)}")
+                            Text(
+                                when (nextStatus) {
+                                    "OUT_FOR_DELIVERY" -> "Mark out for delivery"
+                                    "DELIVERED" -> "Mark as delivered"
+                                    else -> "Move to ${statusLabel(nextStatus)}"
+                                }
+                            )
                         }
                     }
 
-                    if (order.orderStatus == "READY") {
+                    if (
+                        order.orderStatus == "OUT_FOR_DELIVERY" &&
+                        order.paymentMethod == "DUITNOW" &&
+                        order.paymentStatus != "VERIFIED"
+                    ) {
                         Text(
-                            "Seller assignment and delivery tracking are unavailable while staff accounts are disabled.",
+                            "Verify the DuitNow payment before marking this order as delivered.",
                             style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                            color = MaterialTheme.colorScheme.error
                         )
                     }
 
@@ -637,11 +650,14 @@ private fun nextOfficeStatus(status: String): String? {
         "NEW" -> "CONFIRMED"
         "CONFIRMED" -> "PREPARING"
         "PREPARING" -> "READY"
+        "READY", "ASSIGNED" -> "OUT_FOR_DELIVERY"
+        "OUT_FOR_DELIVERY" -> "DELIVERED"
         else -> null
     }
 }
 
 private fun statusLabel(value: String): String {
+    if (value == "ASSIGNED") return "Ready"
     return value.lowercase()
         .replace('_', ' ')
         .replaceFirstChar { it.uppercase() }

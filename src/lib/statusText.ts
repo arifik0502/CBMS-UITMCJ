@@ -5,18 +5,19 @@ export const STEPS: { status: OrderStatus; label: string }[] = [
   { status: "CONFIRMED", label: "Order confirmed" },
   { status: "PREPARING", label: "Preparing" },
   { status: "READY", label: "Ready" },
-  { status: "ASSIGNED", label: "Assigned to seller" },
   { status: "OUT_FOR_DELIVERY", label: "Out for delivery" },
   { status: "DELIVERED", label: "Delivered" }
 ];
 
 export function stepIndex(s: OrderStatus): number {
-  return STEPS.findIndex((x) => x.status === s);
+  // Historical ASSIGNED orders now display at Ready; seller assignment is no longer a workflow step.
+  const visibleStatus = s === "ASSIGNED" ? "READY" : s;
+  return STEPS.findIndex((x) => x.status === visibleStatus);
 }
 
 export const ORDER_LABEL: Record<OrderStatus, string> = {
   NEW: "Received", CONFIRMED: "Confirmed", PREPARING: "Preparing", READY: "Ready",
-  ASSIGNED: "Assigned", OUT_FOR_DELIVERY: "On the way", DELIVERED: "Delivered", CANCELLED: "Cancelled"
+  ASSIGNED: "Ready", OUT_FOR_DELIVERY: "On the way", DELIVERED: "Delivered", CANCELLED: "Cancelled"
 };
 
 export const PAYMENT_LABEL: Record<PaymentStatus, { text: string; tone: "good" | "warn" | "bad" | "neutral" }> = {
