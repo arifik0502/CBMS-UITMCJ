@@ -34,4 +34,16 @@ object AdminRealtimeEventClassifier {
     ): Boolean {
         return oldPhysicalStock != newPhysicalStock
     }
+
+    /**
+     * True only when available stock newly drops to or below the threshold.
+     * Needs the previous value (table replica identity FULL); otherwise stays quiet.
+     */
+    fun crossedLowStock(
+        oldAvailable: Int?,
+        newAvailable: Int?,
+        threshold: Int = InventoryRules.LOW_STOCK_THRESHOLD
+    ): Boolean =
+        oldAvailable != null && newAvailable != null &&
+            newAvailable <= threshold && oldAvailable > threshold
 }

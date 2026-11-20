@@ -8,16 +8,25 @@ plugins {
     alias(libs.plugins.google.services)
 }
 
-// Supabase URL + anon key come from android-admin/local.properties (git-ignored). Never the service_role key.
+// Supabase URL + anon key + developer email come from android-admin/local.properties (git-ignored).
+// Never put the service_role key here.
 val localProps = Properties().apply {
     val f = rootProject.file("local.properties")
     if (f.exists()) f.inputStream().use { load(it) }
 }
 
-val releaseStoreFile = localProps.getProperty("release.storeFile")
-val releaseStorePassword = localProps.getProperty("release.storePassword")
-val releaseKeyAlias = localProps.getProperty("release.keyAlias")
-val releaseKeyPassword = localProps.getProperty("release.keyPassword")
+fun localProp(name: String): String? = localProps.getProperty(name)?.trim()?.takeIf { it.isNotEmpty() }
+
+fun quoted(value: String?): String =
+    "\"" + (value ?: "").replace("\\", "\\\\").replace("\"", "\\\"") + "\""
+
+val releaseStoreFile = localProp("release.storeFile")
+val releaseStorePassword = localProp("release.storePassword")
+val releaseKeyAlias = localProp("release.keyAlias")
+val releaseKeyPassword = localProp("release.keyPassword")
+val hasReleaseSigning = listOf(
+    releaseStoreFile, releaseStorePassword, releaseKeyAlias, releaseKeyPassword
+).all { it != null }
 
 android {
     namespace = "com.crispyburger.admin"
@@ -27,25 +36,32 @@ android {
         applicationId = "com.crispyburger.admin"
         minSdk = 26
         targetSdk = 35
-        versionCode = 12
-        versionName = "0.3.0"
-        buildConfigField("String", "SUPABASE_URL", "\"${localProps.getProperty("supabase.url", "")}\"")
-        buildConfigField("String", "SUPABASE_ANON_KEY", "\"${localProps.getProperty("supabase.anonKey", "")}\"")
+        versionCode = 13
+        versionName = "0.4.0"
+        buildConfigField("String", "SUPABASE_URL", quoted(localProp("supabase.url")))
+        buildConfigField("String", "SUPABASE_ANON_KEY", quoted(localProp("supabase.anonKey")))
+        // Optional client-side allow-list. The server (OWNER role + RLS) is still the real gate.
+        buildConfigField("String", "DEVELOPER_EMAIL", quoted(localProp("developer.email")))
     }
 
     signingConfigs {
-        create("release") {
-            storeFile = releaseStoreFile?.let { rootProject.file(it) }
-            storePassword = releaseStorePassword
-            keyAlias = releaseKeyAlias
-            keyPassword = releaseKeyPassword
+        if (hasReleaseSigning) {
+            create("release") {
+                storeFile = rootProject.file(requireNotNull(releaseStoreFile))
+                storePassword = releaseStorePassword
+                keyAlias = releaseKeyAlias
+                keyPassword = releaseKeyPassword
+            }
         }
     }
 
     buildTypes {
         release {
-            signingConfig = signingConfigs.getByName("release")
-            isMinifyEnabled = false
+            if (hasReleaseSigning) {
+                signingConfig = signingConfigs.getByName("release")
+            }
+            isMinifyEnabled = true
+            isShrinkResources = true
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
         }
     }
@@ -58,6 +74,9 @@ android {
         compose = true
         buildConfig = true
     }
+    testOptions {
+        unitTests.isReturnDefaultValues = true
+    }
 }
 
 dependencies {
@@ -66,11 +85,12 @@ dependencies {
     implementation(libs.androidx.lifecycle.viewmodel.compose)
     implementation(libs.androidx.lifecycle.runtime.compose)
     implementation(libs.androidx.activity.compose)
+    implementation(libs.androidx.fragment.ktx)
+    implementation(libs.androidx.biometric)
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.compose.ui)
     implementation(libs.androidx.compose.ui.tooling.preview)
     implementation(libs.androidx.compose.material3)
-    implementation(libs.androidx.navigation.compose)
     implementation(libs.kotlinx.coroutines.android)
 
     implementation(platform(libs.supabase.bom))
@@ -83,8 +103,8 @@ dependencies {
     implementation(platform(libs.firebase.bom))
     implementation(libs.firebase.messaging)
 
-    testImplementation("junit:junit:4.13.2")
+    testImplementation(libs.junit)
+    testImplementation(libs.kotlinx.coroutines.test)
 
     debugImplementation(libs.androidx.compose.ui.tooling)
 }
-

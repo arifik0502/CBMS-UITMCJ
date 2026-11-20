@@ -13,9 +13,6 @@ import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
@@ -30,8 +27,10 @@ object AdminRealtimeManager {
     private var channel: RealtimeChannel? = null
     private var listenerScope: CoroutineScope? = null
 
-    private val mutableDataChanges = MutableStateFlow(0)
-    val dataChanges: StateFlow<Int> = mutableDataChanges.asStateFlow()
+    /** True while the live channel is subscribed (the app is in the foreground). */
+    @Volatile
+    var isConnected: Boolean = false
+        private set
 
     suspend fun start(context: Context) {
         mutex.withLock {
@@ -58,19 +57,19 @@ object AdminRealtimeManager {
             newScope.launch(start = CoroutineStart.UNDISPATCHED) {
                 ordersFlow.collect { action ->
                     handleOrders(context, action)
-                    mutableDataChanges.value += 1
+                    AdminDataBus.emit(AdminDataBus.Kind.ORDERS)
                 }
             }
             newScope.launch(start = CoroutineStart.UNDISPATCHED) {
                 paymentsFlow.collect { action ->
                     handlePayments(context, action)
-                    mutableDataChanges.value += 1
+                    AdminDataBus.emit(AdminDataBus.Kind.PAYMENTS)
                 }
             }
             newScope.launch(start = CoroutineStart.UNDISPATCHED) {
                 inventoryFlow.collect { action ->
                     handleInventory(context, action)
-                    mutableDataChanges.value += 1
+                    AdminDataBus.emit(AdminDataBus.Kind.INVENTORY)
                 }
             }
 
@@ -80,6 +79,7 @@ object AdminRealtimeManager {
                 }
                 channel = newChannel
                 listenerScope = newScope
+                isConnected = true
             } catch (error: Exception) {
                 newScope.cancel()
                 runCatching { newChannel.unsubscribe() }
@@ -90,6 +90,7 @@ object AdminRealtimeManager {
 
     suspend fun stop() {
         mutex.withLock {
+            isConnected = false
             listenerScope?.cancel()
             listenerScope = null
 
@@ -108,41 +109,50 @@ object AdminRealtimeManager {
     private fun handleOrders(context: Context, action: PostgresAction) {
         val current = action.currentRecord() ?: return
         val orderId = current.value("id") ?: return
-        val timestamp = action.commitTimestamp.toString()
+        val orderNo = current.value("order_no")
+        val label = orderNo?.let { "Order $it" } ?: "An order"
 
         when (action) {
             is PostgresAction.Insert -> {
                 AdminNotificationHelper.post(
                     context = context,
-                    eventKey = "order:new:$orderId:$timestamp",
+                    eventKey = "order:new:$orderId",
                     title = "New order received",
-                    body = "A new CBMS order is ready for review."
+                    body = if (orderNo != null) "$label is ready for review." else "A new CBMS order is ready for review.",
+                    isPayment = false,
+                    orderId = orderId
                 )
             }
             is PostgresAction.Update -> {
                 val old = action.oldRecord
+                val newPayment = current.value("payment_status")
+                val newOrder = current.value("order_status")
                 when (
                     AdminRealtimeEventClassifier.orderUpdate(
                         oldPaymentStatus = old.value("payment_status"),
-                        newPaymentStatus = current.value("payment_status"),
+                        newPaymentStatus = newPayment,
                         oldOrderStatus = old.value("order_status"),
-                        newOrderStatus = current.value("order_status")
+                        newOrderStatus = newOrder
                     )
                 ) {
                     AdminRealtimeNotice.PAYMENT_STATUS -> {
                         AdminNotificationHelper.post(
                             context = context,
-                            eventKey = "payment:$orderId:$timestamp",
+                            eventKey = "payment:$orderId:${newPayment.orEmpty()}",
                             title = "Payment status updated",
-                            body = "The payment status for an order has changed."
+                            body = "$label payment is now ${PaymentStatus.label(newPayment.orEmpty())}.",
+                            isPayment = true,
+                            orderId = orderId
                         )
                     }
                     AdminRealtimeNotice.ORDER_STATUS -> {
                         AdminNotificationHelper.post(
                             context = context,
-                            eventKey = "order-status:$orderId:$timestamp",
+                            eventKey = "order-status:$orderId:${newOrder.orEmpty()}",
                             title = "Order status updated",
-                            body = "An order has moved to another preparation or delivery stage."
+                            body = "$label is now ${OrderStatus.label(newOrder.orEmpty())}.",
+                            isPayment = false,
+                            orderId = orderId
                         )
                     }
                     null -> Unit
@@ -163,32 +173,38 @@ object AdminRealtimeManager {
 
         AdminNotificationHelper.post(
             context = context,
-            eventKey = "payment:$orderId:${action.commitTimestamp}",
+            eventKey = "payment:$orderId:receipt",
             title = "Payment receipt uploaded",
-            body = "A payment receipt is ready for verification."
+            body = "A payment receipt is ready for verification.",
+            isPayment = true,
+            orderId = orderId
         )
     }
 
+    /** Only low-stock crossings notify; routine restocks, deliveries and own adjustments stay quiet. */
     private fun handleInventory(context: Context, action: PostgresAction) {
         if (action !is PostgresAction.Update) return
 
-        val old = action.oldRecord
-        val current = action.record
-        val productId = current.value("product_id") ?: return
+        val productId = action.record.value("product_id") ?: return
+        val newAvailable = action.record.available()
 
-        if (!AdminRealtimeEventClassifier.physicalStockUpdated(
-                old.value("physical_stock"),
-                current.value("physical_stock")
-            )
-        ) return
+        if (!AdminRealtimeEventClassifier.crossedLowStock(action.oldRecord.available(), newAvailable)) return
 
         AdminNotificationHelper.post(
             context = context,
-            eventKey = "inventory:$productId:${action.commitTimestamp}",
-            title = "Inventory stock changed",
-            body = "A product's physical stock quantity has changed."
+            eventKey = "inventory:low:$productId",
+            title = "Low stock",
+            body = "A product is running low: $newAvailable available.",
+            isPayment = false
         )
     }
+
+    private fun JsonObject.available(): Int? =
+        value("available_stock")?.toIntOrNull() ?: run {
+            val physical = value("physical_stock")?.toIntOrNull()
+            val reserved = value("reserved_stock")?.toIntOrNull()
+            if (physical != null && reserved != null) physical - reserved else null
+        }
 
     private fun PostgresAction.currentRecord(): JsonObject? {
         return when (this) {
