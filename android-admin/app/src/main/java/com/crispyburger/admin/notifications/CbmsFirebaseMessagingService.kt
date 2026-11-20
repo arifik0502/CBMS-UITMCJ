@@ -1,5 +1,6 @@
 package com.crispyburger.admin.notifications
 
+import com.crispyburger.admin.data.AdminRealtimeManager
 import com.google.firebase.messaging.FirebaseMessagingService
 import com.google.firebase.messaging.RemoteMessage
 
@@ -9,17 +10,22 @@ class CbmsFirebaseMessagingService : FirebaseMessagingService() {
     }
 
     override fun onMessageReceived(message: RemoteMessage) {
+        // While the app is open the live (realtime) connection already notifies the owner.
+        // Skipping here avoids showing the same event twice.
+        if (AdminRealtimeManager.isConnected) return
+
         val data = message.data
         val type = data["type"]?.lowercase()?.take(32) ?: "order"
         val eventId = data["event_id"]?.take(120)
             ?: message.messageId?.take(120)
             ?: System.currentTimeMillis().toString()
+        val orderId = data["order_id"]?.take(64)?.ifBlank { null }
 
         val isPayment = type == "payment" || type.startsWith("payment_")
         val eventKey = when {
-            isPayment -> "payment:$eventId"
+            isPayment -> "payment:${orderId ?: eventId}:${data["status"].orEmpty().take(32)}"
             type.startsWith("inventory") -> "inventory:$eventId"
-            else -> "order:$eventId"
+            else -> "order:${orderId ?: eventId}:${data["status"].orEmpty().take(32)}"
         }
 
         val title = (data["title"] ?: message.notification?.title)
@@ -38,7 +44,8 @@ class CbmsFirebaseMessagingService : FirebaseMessagingService() {
             eventKey = eventKey,
             title = title,
             message = body,
-            isPayment = isPayment
+            isPayment = isPayment,
+            orderId = orderId
         )
     }
 }

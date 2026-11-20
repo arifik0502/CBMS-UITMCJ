@@ -1,6 +1,7 @@
 package com.crispyburger.admin.notifications
 
 import android.Manifest
+import android.annotation.SuppressLint
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
@@ -14,13 +15,16 @@ import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
 import com.crispyburger.admin.MainActivity
+import com.crispyburger.admin.R
 
 object AdminNotificationHelper {
     const val ORDERS_CHANNEL_ID = "cbms_admin_orders"
     const val PAYMENTS_CHANNEL_ID = "cbms_admin_payments"
+    const val EXTRA_ORDER_ID = "cbms_order_id"
+
     private const val PREFS_NAME = "cbms_admin_notification_state"
-    private const val RECENT_EVENTS_KEY = "recent_event_keys"
-    private const val MAX_RECENT_EVENTS = 250
+    // New key: the old "recent_event_keys" was a StringSet and reading it as a String would crash.
+    private const val RECENT_EVENTS_KEY = "recent_events_v2"
 
     fun createChannel(context: Context) {
         createChannels(context)
@@ -30,14 +34,17 @@ object AdminNotificationHelper {
         context: Context,
         eventKey: String,
         title: String,
-        body: String
+        body: String,
+        isPayment: Boolean = eventKey.startsWith("payment:"),
+        orderId: String? = null
     ) {
         showOrderEvent(
             context = context,
             eventKey = eventKey,
             title = title,
             message = body,
-            isPayment = eventKey.startsWith("payment:")
+            isPayment = isPayment,
+            orderId = orderId
         )
     }
 
@@ -74,12 +81,14 @@ object AdminNotificationHelper {
         manager.createNotificationChannels(listOf(orderChannel, paymentChannel))
     }
 
+    @SuppressLint("MissingPermission") // checked explicitly below
     fun showOrderEvent(
         context: Context,
         eventKey: String,
         title: String,
         message: String,
-        isPayment: Boolean
+        isPayment: Boolean,
+        orderId: String? = null
     ) {
         val appContext = context.applicationContext
         if (Build.VERSION.SDK_INT >= 33 &&
@@ -93,6 +102,7 @@ object AdminNotificationHelper {
 
         val intent = Intent(appContext, MainActivity::class.java).apply {
             flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
+            if (!orderId.isNullOrBlank()) putExtra(EXTRA_ORDER_ID, orderId)
         }
         val pendingIntent = PendingIntent.getActivity(
             appContext,
@@ -103,7 +113,7 @@ object AdminNotificationHelper {
 
         val channelId = if (isPayment) PAYMENTS_CHANNEL_ID else ORDERS_CHANNEL_ID
         val notification = NotificationCompat.Builder(appContext, channelId)
-            .setSmallIcon(android.R.drawable.stat_notify_more)
+            .setSmallIcon(R.drawable.ic_cbms_notification)
             .setContentTitle(title)
             .setContentText(message)
             .setStyle(NotificationCompat.BigTextStyle().bigText(message))
@@ -114,22 +124,18 @@ object AdminNotificationHelper {
             .setOnlyAlertOnce(true)
             .build()
 
-        NotificationManagerCompat.from(appContext).notify(eventKey.hashCode(), notification)
+        // The unique event key is the notification tag, so two events can never share an id.
+        NotificationManagerCompat.from(appContext).notify(eventKey, 0, notification)
     }
 
+    @Synchronized
     private fun rememberEvent(context: Context, eventKey: String): Boolean {
         val preferences = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-        val recent = LinkedHashSet(
-            preferences.getStringSet(RECENT_EVENTS_KEY, emptySet()).orEmpty()
-        )
-        if (!recent.add(eventKey)) return false
-
-        while (recent.size > MAX_RECENT_EVENTS) {
-            val oldest = recent.firstOrNull() ?: break
-            recent.remove(oldest)
+        val stored = preferences.getString(RECENT_EVENTS_KEY, "").orEmpty()
+        val result = EventDedupe.check(stored, eventKey, System.currentTimeMillis())
+        if (result.shouldPost) {
+            preferences.edit().putString(RECENT_EVENTS_KEY, result.updatedState).apply()
         }
-
-        preferences.edit().putStringSet(RECENT_EVENTS_KEY, recent).apply()
-        return true
+        return result.shouldPost
     }
 }

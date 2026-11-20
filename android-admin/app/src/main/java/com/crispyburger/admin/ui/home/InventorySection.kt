@@ -2,152 +2,106 @@ package com.crispyburger.admin.ui.home
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
-import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.crispyburger.admin.data.AdminInventoryItem
-import com.crispyburger.admin.data.AdminSupabase
-import kotlinx.coroutines.launch
+import com.crispyburger.admin.data.InventoryRules
+import com.crispyburger.admin.data.Money
+import com.crispyburger.admin.ui.common.ButtonProgress
+import com.crispyburger.admin.ui.common.MessageCard
+import com.crispyburger.admin.ui.common.SectionHeader
+import com.crispyburger.admin.ui.common.StatusChip
+import com.crispyburger.admin.ui.common.Tone
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun InventorySection(refreshKey: Int = 0) {
-    val scope = rememberCoroutineScope()
-    var items by remember { mutableStateOf(emptyList<AdminInventoryItem>()) }
-    var isLoading by remember { mutableStateOf(true) }
-    var isSaving by remember { mutableStateOf(false) }
-    var errorMessage by remember { mutableStateOf<String?>(null) }
-    var successMessage by remember { mutableStateOf<String?>(null) }
-    var selectedItem by remember { mutableStateOf<AdminInventoryItem?>(null) }
-    var adjustmentType by remember { mutableStateOf("RESTOCK") }
-    var quantityText by remember { mutableStateOf("") }
-    var reasonText by remember { mutableStateOf("") }
+fun InventoryScreen(vm: InventoryViewModel) {
+    val state by vm.state.collectAsStateWithLifecycle()
+    LaunchedEffect(Unit) { vm.ensureLoaded() }
 
-    fun refresh() {
-        scope.launch {
-            isLoading = true
-            errorMessage = null
-            try {
-                items = AdminSupabase.loadInventory()
-            } catch (error: Exception) {
-                errorMessage = AdminSupabase.friendlyError(error, "Could not load inventory.")
-            } finally {
-                isLoading = false
-            }
-        }
-    }
-
-    LaunchedEffect(refreshKey) {
-        refresh()
-    }
-
-    Column(
-        modifier = Modifier.fillMaxWidth(),
-        verticalArrangement = Arrangement.spacedBy(12.dp)
+    PullToRefreshBox(
+        isRefreshing = state.isLoading,
+        onRefresh = { vm.refresh() },
+        modifier = Modifier.fillMaxSize()
     ) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween
+        LazyColumn(
+            modifier = Modifier.fillMaxSize(),
+            contentPadding = PaddingValues(horizontal = 18.dp, vertical = 16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            Text("Inventory management", style = MaterialTheme.typography.titleLarge)
-            TextButton(onClick = { refresh() }, enabled = !isLoading && !isSaving) {
-                Text("Refresh")
-            }
-        }
-
-        Text(
-            "Available stock = physical stock minus quantities reserved by open orders.",
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
-
-        if (successMessage != null) {
-            Text(successMessage!!, color = MaterialTheme.colorScheme.primary)
-        }
-        if (errorMessage != null) {
-            Text(errorMessage!!, color = MaterialTheme.colorScheme.error)
-        }
-
-        when {
-            isLoading -> {
-                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center) {
-                    CircularProgressIndicator()
-                }
-            }
-            items.isEmpty() -> {
-                Card(modifier = Modifier.fillMaxWidth()) {
+            item(key = "header") {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    SectionHeader("Inventory management")
                     Text(
-                        "No inventory rows found. Add products and inventory records in Supabase first.",
-                        modifier = Modifier.padding(16.dp),
-                        style = MaterialTheme.typography.bodyMedium
+                        "Available stock = physical stock minus quantities reserved by open orders. " +
+                            "Items at ${InventoryRules.LOW_STOCK_THRESHOLD} or fewer available are marked Low.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
             }
-            else -> {
-                items.forEach { item ->
-                    InventoryCard(
-                        item = item,
-                        enabled = !isSaving,
-                        onAdjust = { type ->
-                            selectedItem = item
-                            adjustmentType = type
-                            quantityText = ""
-                            reasonText = ""
-                            errorMessage = null
-                            successMessage = null
-                        }
-                    )
+            state.success?.let { msg -> item(key = "success") { MessageCard(msg, isError = false) } }
+            state.error?.let { msg -> item(key = "error") { MessageCard(msg, isError = true) } }
+
+            if (state.items.isEmpty() && !state.isLoading) {
+                item(key = "empty") {
+                    Card(modifier = Modifier.fillMaxWidth()) {
+                        Text(
+                            "No inventory rows found. Add products and inventory records in Supabase first.",
+                            modifier = Modifier.padding(16.dp),
+                            style = MaterialTheme.typography.bodyMedium
+                        )
+                    }
                 }
+            }
+
+            items(state.items, key = { it.product.id }) { item ->
+                InventoryCard(
+                    item = item,
+                    enabled = !state.isSaving,
+                    onAdjust = { type -> vm.startAdjust(item, type) }
+                )
             }
         }
     }
 
-    if (selectedItem != null) {
-        val item = selectedItem!!
-        val quantity = quantityText.toIntOrNull()
-        val validQuantity = quantity != null &&
-            quantity >= 0 &&
-            (adjustmentType == "SET" || quantity > 0)
-        val resultingPhysicalStock = when (adjustmentType) {
-            "RESTOCK" -> quantity?.let { item.stock.physicalStock + it }
-            "REDUCTION" -> quantity?.let { item.stock.physicalStock - it }
-            "SET" -> quantity
-            else -> null
-        }
-        val meetsReservation = resultingPhysicalStock != null &&
-            resultingPhysicalStock >= item.stock.reservedStock
-        val reservationMessage = if (resultingPhysicalStock != null && !meetsReservation) {
-            "This adjustment would leave ${resultingPhysicalStock} physical units, but ${item.stock.reservedStock} are reserved. Keep physical stock at or above ${item.stock.reservedStock}."
-        } else null
+    state.draft?.let { draft ->
+        val item = draft.item
+        val resulting = draft.resultingPhysical
         AlertDialog(
-            onDismissRequest = { if (!isSaving) selectedItem = null },
+            onDismissRequest = { if (!state.isSaving) vm.dismissDraft() },
             title = {
                 Text(
-                    when (adjustmentType) {
-                        "RESTOCK" -> "Restock ${item.product.name}"
-                        "REDUCTION" -> "Reduce ${item.product.name}"
+                    when (draft.type) {
+                        InventoryRules.RESTOCK -> "Restock ${item.product.name}"
+                        InventoryRules.REDUCTION -> "Reduce ${item.product.name}"
                         else -> "Set ${item.product.name} stock"
                     }
                 )
@@ -158,34 +112,32 @@ fun InventorySection(refreshKey: Int = 0) {
                     Text("Reserved stock: ${item.stock.reservedStock}")
                     Text("Available stock: ${item.stock.availableStock}")
                     OutlinedTextField(
-                        value = quantityText,
-                        onValueChange = { value ->
-                            quantityText = value.filter { it.isDigit() }.take(6)
-                        },
+                        value = draft.quantityText,
+                        onValueChange = vm::updateQuantity,
                         modifier = Modifier.fillMaxWidth(),
-                        label = { Text(if (adjustmentType == "SET") "New physical stock" else "Quantity") },
+                        label = { Text(if (draft.type == InventoryRules.SET) "New physical stock" else "Quantity") },
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                         singleLine = true
                     )
                     OutlinedTextField(
-                        value = reasonText,
-                        onValueChange = { reasonText = it },
+                        value = draft.reasonText,
+                        onValueChange = vm::updateReason,
                         modifier = Modifier.fillMaxWidth(),
                         label = { Text("Reason (required)") },
                         minLines = 2
                     )
                     Text(
-                        when (adjustmentType) {
-                            "RESTOCK" -> "The entered quantity will be added to physical stock."
-                            "REDUCTION" -> "The entered quantity will be removed. Physical stock must remain at or above reserved stock."
+                        when (draft.type) {
+                            InventoryRules.RESTOCK -> "The entered quantity will be added to physical stock."
+                            InventoryRules.REDUCTION -> "The entered quantity will be removed. Physical stock must remain at or above reserved stock."
                             else -> "The entered value becomes physical stock. It cannot be lower than reserved stock."
                         },
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
-                    if (reservationMessage != null) {
+                    if (resulting != null && !draft.meetsReservation) {
                         Text(
-                            reservationMessage,
+                            "This adjustment would leave $resulting physical units, but ${item.stock.reservedStock} are reserved. Keep physical stock at or above ${item.stock.reservedStock}.",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.error
                         )
@@ -193,37 +145,12 @@ fun InventorySection(refreshKey: Int = 0) {
                 }
             },
             confirmButton = {
-                Button(
-                    onClick = {
-                        val productId = item.product.id
-                        val amount = quantity ?: 0
-                        val reason = reasonText.trim()
-                        scope.launch {
-                            isSaving = true
-                            errorMessage = null
-                            successMessage = null
-                            try {
-                                AdminSupabase.adjustInventory(productId, adjustmentType, amount, reason)
-                                items = AdminSupabase.loadInventory()
-                                selectedItem = null
-                                successMessage = "Inventory updated and logged."
-                            } catch (error: Exception) {
-                                errorMessage = AdminSupabase.friendlyError(error, "Inventory adjustment failed. Check your connection and inventory permissions.")
-                            } finally {
-                                isSaving = false
-                            }
-                        }
-                    },
-                    enabled = validQuantity && meetsReservation && reasonText.trim().length >= 3 && !isSaving
-                ) {
-                    if (isSaving) CircularProgressIndicator()
-                    else Text("Save adjustment")
+                Button(onClick = vm::save, enabled = draft.canSave && !state.isSaving) {
+                    if (state.isSaving) ButtonProgress() else Text("Save adjustment")
                 }
             },
             dismissButton = {
-                TextButton(onClick = { selectedItem = null }, enabled = !isSaving) {
-                    Text("Back")
-                }
+                TextButton(onClick = vm::dismissDraft, enabled = !state.isSaving) { Text("Back") }
             }
         )
     }
@@ -235,17 +162,25 @@ private fun InventoryCard(
     enabled: Boolean,
     onAdjust: (String) -> Unit
 ) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(16.dp)
-    ) {
-        Column(
-            modifier = Modifier.padding(15.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            Text(item.product.name, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+    Card(modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(16.dp)) {
+        Column(modifier = Modifier.padding(15.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    item.product.name,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    modifier = Modifier.weight(1f)
+                )
+                if (InventoryRules.isLow(item.stock.availableStock)) {
+                    StatusChip(if (item.stock.availableStock <= 0) "Out of stock" else "Low", Tone.Bad)
+                }
+            }
             Text(
-                "${item.product.sku} · ${formatInventoryPrice(item.product.priceCents)}",
+                "${item.product.sku} · ${Money.format(item.product.priceCents)}",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -254,33 +189,20 @@ private fun InventoryCard(
                 StockValue("Reserved", item.stock.reservedStock)
                 StockValue("Available", item.stock.availableStock)
             }
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(4.dp)
-            ) {
-                OutlinedButton(
-                    onClick = { onAdjust("RESTOCK") },
-                    enabled = enabled,
-                    modifier = Modifier.weight(1f),
-                    contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 2.dp, vertical = 8.dp)
-                ) {
-                    Text("Restock", maxLines = 1, softWrap = false, fontSize = 12.sp)
-                }
-                OutlinedButton(
-                    onClick = { onAdjust("REDUCTION") },
-                    enabled = enabled,
-                    modifier = Modifier.weight(1f),
-                    contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 2.dp, vertical = 8.dp)
-                ) {
-                    Text("Reduce", maxLines = 1, softWrap = false, fontSize = 12.sp)
-                }
-                OutlinedButton(
-                    onClick = { onAdjust("SET") },
-                    enabled = enabled,
-                    modifier = Modifier.weight(1f),
-                    contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 2.dp, vertical = 8.dp)
-                ) {
-                    Text("Set", maxLines = 1, softWrap = false, fontSize = 12.sp)
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                listOf(
+                    "Restock" to InventoryRules.RESTOCK,
+                    "Reduce" to InventoryRules.REDUCTION,
+                    "Set" to InventoryRules.SET
+                ).forEach { (label, type) ->
+                    OutlinedButton(
+                        onClick = { onAdjust(type) },
+                        enabled = enabled,
+                        modifier = Modifier.weight(1f),
+                        contentPadding = PaddingValues(horizontal = 2.dp, vertical = 8.dp)
+                    ) {
+                        Text(label, maxLines = 1, softWrap = false, fontSize = 12.sp)
+                    }
                 }
             }
         }
@@ -293,8 +215,4 @@ private fun StockValue(label: String, value: Int) {
         Text(value.toString(), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
         Text(label, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.secondary)
     }
-}
-
-private fun formatInventoryPrice(cents: Int): String {
-    return "RM ${cents / 100}.${(cents % 100).toString().padStart(2, '0')}"
 }
