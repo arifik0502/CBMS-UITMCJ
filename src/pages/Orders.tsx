@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { CartBar } from "../components/CartBar";
 import { CartDrawer } from "../components/CartDrawer";
+import CancelOrder from "../components/CancelOrder";
 import { Header, LinkButton, LoadingScreen, Notice, Pill, Shell } from "../components/ui";
 import { getOrder, getTicketsByTokens } from "../lib/api";
 import { mapLimit } from "../lib/async";
@@ -43,6 +44,18 @@ function statusTone(o: StoredOrder): "good" | "warn" | "bad" | "neutral" {
   if (o.status === "DELIVERED") return "good";
   if (o.status === "CANCELLED") return "bad";
   return "warn";
+}
+
+function canCancelStored(o: StoredOrder): boolean {
+  return !o.unavailable &&
+    o.status !== "OUT_FOR_DELIVERY" && o.status !== "DELIVERED" && o.status !== "CANCELLED" &&
+    (o.paymentStatus === "UNPAID" || o.paymentStatus === "CASH_PENDING" || o.paymentStatus === "REJECTED");
+}
+
+function isPaidLockedStored(o: StoredOrder): boolean {
+  return !o.unavailable &&
+    o.status !== "OUT_FOR_DELIVERY" && o.status !== "DELIVERED" && o.status !== "CANCELLED" &&
+    (o.paymentStatus === "PENDING_VERIFICATION" || o.paymentStatus === "VERIFIED");
 }
 
 export default function OrdersPage() {
@@ -89,6 +102,16 @@ export default function OrdersPage() {
     if (tokens.length === 0) return;
     try { setTickets(refreshStoredTickets(await getTicketsByTokens(tokens))); } catch { }
   }, []);
+
+  async function refreshAfterCancel(token: string) {
+    try {
+      const view = await getOrder(token);
+      updateFromView(token, view);
+      setOrders(sortNewestFirst(readHistory()));
+    } catch {
+      await refresh(false);
+    }
+  }
 
   useEffect(() => {
     void refresh(false);
@@ -179,6 +202,8 @@ export default function OrdersPage() {
           const pay = o.paymentStatus ? PAYMENT_LABEL[o.paymentStatus] : null;
           const needsPayment = orderTab(o) === "active" && (o.paymentStatus === "UNPAID" || o.paymentStatus === "REJECTED");
           const terminal = orderTab(o) !== "active";
+          const cancellable = canCancelStored(o);
+          const paidLocked = isPaidLockedStored(o);
           return (
             <article key={o.token} className="ticket p-4" aria-label={`Order ${o.orderNo || "loading"}`}>
               <div className="flex items-start justify-between gap-3">
@@ -207,6 +232,15 @@ export default function OrdersPage() {
                     {o.totalCents > 0 && <span className="font-display text-lg font-extrabold">{formatRM(o.totalCents)}</span>}
                   </div>
                 </>
+              )}
+
+              {cancellable && (
+                <div className="mt-3">
+                  <CancelOrder compact token={o.token} onCancelled={() => { void refreshAfterCancel(o.token); }} />
+                </div>
+              )}
+              {paidLocked && (
+                <p className="mt-3 text-right text-xs text-muted">To cancel a paid order, message the team so a refund can be arranged.</p>
               )}
 
               {!unavailable && ticketsForOrder(tickets, o.token).map((t) => (

@@ -3,8 +3,13 @@ import { cancelOrder } from "../lib/api";
 import { friendlyError } from "../lib/errors";
 import { Notice, Spinner } from "./ui";
 
-/** "Cancel order" with a quick yes/no check. It never asks for a reason. */
-export default function CancelOrder({ token, onCancelled }: { token: string; onCancelled: () => void }) {
+/**
+ * "Cancel order" with a quick yes/no check. It never asks for a reason.
+ * `compact` renders a small inline button (used on the My Orders cards).
+ */
+export default function CancelOrder({
+  token, onCancelled, compact = false
+}: { token: string; onCancelled: () => void; compact?: boolean }) {
   const [confirming, setConfirming] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -27,7 +32,11 @@ export default function CancelOrder({ token, onCancelled }: { token: string; onC
       <button
         type="button"
         onClick={() => setConfirming(true)}
-        className="min-h-12 w-full rounded-xl border-2 border-ketchup bg-paper px-5 py-3 text-base font-bold text-ketchup active:translate-y-0.5"
+        className={
+          compact
+            ? "min-h-10 rounded-lg border-2 border-ketchup bg-paper px-4 py-2 text-sm font-bold text-ketchup active:translate-y-0.5"
+            : "min-h-12 w-full rounded-xl border-2 border-ketchup bg-paper px-5 py-3 text-base font-bold text-ketchup active:translate-y-0.5"
+        }
       >
         Cancel order
       </button>
@@ -35,7 +44,7 @@ export default function CancelOrder({ token, onCancelled }: { token: string; onC
   }
 
   return (
-    <div className="space-y-3 rounded-xl border-2 border-ketchup bg-paper p-4">
+    <div className="w-full space-y-3 rounded-xl border-2 border-ketchup bg-paper p-4">
       <p className="font-bold">Cancel this order?</p>
       <p className="text-sm text-muted">Your burgers will be released and the order will stop.</p>
       {error && <Notice tone="error">{error}</Notice>}

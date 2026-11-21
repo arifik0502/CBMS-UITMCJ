@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState, type ChangeEvent } from "react";
 import { Navigate, useNavigate, useParams } from "react-router-dom";
+import CancelOrder from "../components/CancelOrder";
 import { Button, ErrorScreen, Header, LinkButton, LoadingScreen, Notice, Shell } from "../components/ui";
 import { uploadReceipt } from "../lib/api";
 import { friendlyError } from "../lib/errors";
@@ -143,6 +144,10 @@ export default function PayPage() {
 
       <div className="mt-4">
         <LinkButton to={`/track/${token}`} variant="secondary">I will upload later</LinkButton>
+      </div>
+
+      <div className="mt-4">
+        <CancelOrder token={token as string} onCancelled={() => navigate(`/track/${token}`, { replace: true })} />
       </div>
     </Shell>
   );

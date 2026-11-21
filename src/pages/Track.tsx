@@ -1,8 +1,10 @@
 import { useEffect, useState } from "react";
 import { useParams, useSearchParams } from "react-router-dom";
+import CancelOrder from "../components/CancelOrder";
 import { Button, ErrorScreen, Header, LinkButton, LoadingScreen, Notice, Pill, Shell } from "../components/ui";
 import { formatRM, formatTime, roomLabel } from "../lib/format";
 import { updateFromView } from "../lib/orderHistory";
+import { canCancel, isPaidLocked, showPaymentStatus } from "../lib/orderRules";
 import { ORDER_LABEL, PAYMENT_LABEL, STEPS, stepIndex } from "../lib/statusText";
 import { useOrder } from "../lib/useOrder";
 
@@ -61,7 +63,7 @@ export default function TrackPage() {
             <Pill tone={cancelled ? "bad" : order.order_status === "DELIVERED" ? "good" : "neutral"}>
               {ORDER_LABEL[order.order_status]}
             </Pill>
-            <Pill tone={pay.tone}>{pay.text}</Pill>
+            {showPaymentStatus(order) && <Pill tone={pay.tone}>{pay.text}</Pill>}
           </div>
         </div>
         <div className="tear" />
@@ -146,6 +148,15 @@ export default function TrackPage() {
             })}
           </ol>
         </section>
+      )}
+
+      {canCancel(order) && (
+        <div className="mt-5">
+          <CancelOrder token={token as string} onCancelled={() => { void reload(); }} />
+        </div>
+      )}
+      {isPaidLocked(order) && (
+        <p className="mt-5 text-center text-sm font-semibold">Already paid? To cancel, message the team so they can arrange your refund.</p>
       )}
 
       <div className="mt-5 space-y-3">
