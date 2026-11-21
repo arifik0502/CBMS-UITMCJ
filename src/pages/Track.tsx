@@ -150,9 +150,12 @@ export default function TrackPage() {
 
       <div className="mt-5 space-y-3">
         <LinkButton to="/orders" variant="secondary">All my orders</LinkButton>
+        <LinkButton to={`/support?order=${encodeURIComponent(token ?? "")}`} variant="secondary">Report a problem with this order</LinkButton>
         <Button variant="secondary" onClick={share}>{copied ? "Link copied" : "Save or share tracking link"}</Button>
         <p className="text-center text-xs text-muted">Anyone with this link can see this order. Keep it private.</p>
       </div>
     </Shell>
   );
 }
+
+

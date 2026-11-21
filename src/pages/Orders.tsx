@@ -2,8 +2,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { CartBar } from "../components/CartBar";
 import { CartDrawer } from "../components/CartDrawer";
-import { Header, LoadingScreen, Notice, Pill, Shell } from "../components/ui";
-import { getOrder } from "../lib/api";
+import { Header, LinkButton, LoadingScreen, Notice, Pill, Shell } from "../components/ui";
+import { getOrder, getTicketsByTokens } from "../lib/api";
 import { mapLimit } from "../lib/async";
 import { getOrderability } from "../lib/availability";
 import { useCart } from "../lib/cart";
@@ -14,6 +14,7 @@ import {
   type OrderTab, type StoredOrder
 } from "../lib/orderHistory";
 import { buildReorder } from "../lib/reorder";
+import { forgetTicket, readTickets, refreshStoredTickets, ticketsForOrder, type StoredTicket } from "../lib/ticketHistory";
 import { ORDER_LABEL, PAYMENT_LABEL } from "../lib/statusText";
 import { useStorefront } from "../lib/useStorefront";
 
@@ -52,6 +53,7 @@ export default function OrdersPage() {
     const counts = countByTab(readHistory());
     return counts.active > 0 || counts.completed === 0 ? "active" : "completed";
   });
+  const [tickets, setTickets] = useState<StoredTicket[]>(() => readTickets());
   const [loading, setLoading] = useState(true);
   const [notice, setNotice] = useState<{ tone: "info" | "error" | "success"; text: string } | null>(null);
   const [clock, setClock] = useState(() => new Date());
@@ -82,12 +84,20 @@ export default function OrdersPage() {
     busy.current = false;
   }, []);
 
+  const refreshTickets = useCallback(async () => {
+    const tokens = readTickets().map((t) => t.token);
+    if (tokens.length === 0) return;
+    try { setTickets(refreshStoredTickets(await getTicketsByTokens(tokens))); } catch { }
+  }, []);
+
   useEffect(() => {
     void refresh(false);
+    void refreshTickets();
     const id = window.setInterval(() => { if (!document.hidden) void refresh(true); }, 15000);
+    const ticketId = window.setInterval(() => { if (!document.hidden) void refreshTickets(); }, 30000);
     const clockId = window.setInterval(() => setClock(new Date()), 15000);
-    return () => { window.clearInterval(id); window.clearInterval(clockId); };
-  }, [refresh]);
+    return () => { window.clearInterval(id); window.clearInterval(ticketId); window.clearInterval(clockId); };
+  }, [refresh, refreshTickets]);
 
   const counts = useMemo(() => countByTab(orders), [orders]);
   const shown = useMemo(() => orders.filter((o) => orderTab(o) === tab), [orders, tab]);
@@ -199,6 +209,13 @@ export default function OrdersPage() {
                 </>
               )}
 
+              {!unavailable && ticketsForOrder(tickets, o.token).map((t) => (
+                <p key={t.token} className="mt-3 flex items-center justify-between gap-2 rounded-lg border-2 border-ink bg-white px-3 py-2 text-sm">
+                  <span className="font-semibold">Ticket {t.ticketNo}</span>
+                  <Pill tone={t.status === "RESOLVED" ? "good" : "warn"}>{t.status === "RESOLVED" ? "Resolved" : "Open"}</Pill>
+                </p>
+              ))}
+
               <div className="mt-4 grid grid-cols-2 gap-2">
                 {!unavailable && (
                   <Link to={`/track/${o.token}`}
@@ -230,6 +247,12 @@ export default function OrdersPage() {
         })}
       </section>
 
+      <section className="mt-8 space-y-3" aria-labelledby="tickets-title">
+        <h2 id="tickets-title" className="font-display text-2xl font-extrabold">Support tickets</h2>
+        {tickets.length === 0 ? <p className="text-sm text-muted">No tickets yet.</p> : <ul className="space-y-3">{tickets.map(t => <li key={t.token} className="ticket p-4"><div className="flex items-start justify-between gap-3"><div><p className="font-display text-lg font-extrabold">{t.ticketNo}</p><p className="text-xs text-muted">{t.orderNo ? `About ${t.orderNo}` : "General question"}</p></div><Pill tone={t.status === "RESOLVED" ? "good" : "warn"}>{t.status === "RESOLVED" ? "Resolved" : "Open"}</Pill></div><p className="mt-2 line-clamp-3 text-sm">{t.message}</p>{t.status === "RESOLVED" && <button type="button" onClick={() => { forgetTicket(t.token); setTickets(readTickets()); }} className="mt-3 min-h-10 text-sm font-bold text-ketchup underline">Remove from this device</button>}</li>)}</ul>}
+        <LinkButton to="/support" variant="secondary">Report a problem</LinkButton>
+      </section>
+
       <CartBar count={cart.count} totalCents={cartTotal} onOpen={cart.openDrawer} />
       <CartDrawer
         products={products}
@@ -241,3 +264,7 @@ export default function OrdersPage() {
     </Shell>
   );
 }
+
+
+
+

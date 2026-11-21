@@ -69,3 +69,17 @@ export interface OrderView {
   items: { name: string; quantity: number; unit_price_cents: number; line_total_cents: number }[];
   timeline: { status: OrderStatus; at: string }[];
 }
+export type TicketStatus = "OPEN" | "RESOLVED";
+
+/** What a customer may see about their own support ticket. */
+export interface TicketView {
+  ticket_no: string;
+  token: string;
+  status: TicketStatus;
+  message: string;
+  created_at: string;
+  resolved_at: string | null;
+  order_no: string | null;
+  has_photo: boolean;
+}
+

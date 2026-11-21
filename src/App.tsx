@@ -6,6 +6,7 @@ import { Header, LinkButton, LoadingScreen, Shell } from "./components/ui";
 import Home from "./pages/Home";
 const OrderPage = lazy(() => import("./pages/Order"));
 const OrdersPage = lazy(() => import("./pages/Orders"));
+const SupportPage = lazy(() => import("./pages/Support"));
 const PayPage = lazy(() => import("./pages/Pay"));
 const TrackPage = lazy(() => import("./pages/Track"));
 
@@ -46,6 +47,7 @@ export default function App() {
           <Route path="/" element={<Home />} />
           <Route path="/order" element={<OrderPage />} />
           <Route path="/orders" element={<OrdersPage />} />
+          <Route path="/support" element={<SupportPage />} />
           <Route path="/pay/:token" element={<PayPage />} />
           <Route path="/track/:token" element={<TrackPage />} />
           <Route path="*" element={<NotFound />} />
@@ -54,3 +56,5 @@ export default function App() {
     </CartProvider>
   );
 }
+
+

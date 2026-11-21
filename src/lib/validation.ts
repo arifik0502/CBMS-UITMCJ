@@ -44,3 +44,26 @@ export function validateOrder(v: OrderFormValues, maxQty: number): FormErrors {
   }
   return e;
 }
+export const TICKET_MESSAGE_MIN = 5;
+export const TICKET_MESSAGE_MAX = 1000;
+
+export interface TicketFormValues {
+  message: string;
+  name: string;
+  phone: string;
+}
+export type TicketFormErrors = Partial<Record<keyof TicketFormValues, string>>;
+
+/** Mirrors create_support_ticket(); the server is still the authority. */
+export function validateTicket(v: TicketFormValues): TicketFormErrors {
+  const e: TicketFormErrors = {};
+  const message = v.message.trim();
+  if (message.length < TICKET_MESSAGE_MIN) e.message = "Tell us what went wrong (at least 5 characters).";
+  else if (message.length > TICKET_MESSAGE_MAX) e.message = `Keep it under ${TICKET_MESSAGE_MAX} characters.`;
+  const name = v.name.trim();
+  if (name.length < 2) e.name = "Enter your name.";
+  else if (name.length > 80) e.name = "Name is too long.";
+  if (!PHONE_RE.test(normalizePhone(v.phone))) e.phone = "Enter a Malaysian mobile number, e.g. 012-345 6789.";
+  return e;
+}
+

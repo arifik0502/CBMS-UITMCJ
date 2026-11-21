@@ -164,6 +164,10 @@ export default function Home() {
         )}
       </section>
 
+      <p className="mt-6 text-center text-sm font-medium">
+        Problem with an order? <Link to="/support" className="font-bold underline">Report it</Link>
+      </p>
+
       <CartBar count={cart.count} totalCents={cartTotal} onOpen={cart.openDrawer} />
       <CartDrawer
         products={products}
@@ -174,3 +178,5 @@ export default function Home() {
     </Shell>
   );
 }
+
+
