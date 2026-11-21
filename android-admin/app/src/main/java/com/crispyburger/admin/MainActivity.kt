@@ -45,6 +45,7 @@ class MainActivity : FragmentActivity() {
     private var lockRequired by mutableStateOf(true)
     private var lockMessage by mutableStateOf<String?>(null)
     private var pendingOrderId by mutableStateOf<String?>(null)
+    private var pendingTab by mutableStateOf<String?>(null)
     private var backgroundedAt = 0L
 
     private lateinit var biometricPrompt: BiometricPrompt
@@ -53,6 +54,7 @@ class MainActivity : FragmentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         pendingOrderId = intent?.getStringExtra(AdminNotificationHelper.EXTRA_ORDER_ID)
+        pendingTab = intent?.getStringExtra(AdminNotificationHelper.EXTRA_OPEN_TAB)
         setupBiometric()
         setContent {
             CbmsTheme {
@@ -64,9 +66,11 @@ class MainActivity : FragmentActivity() {
                         lockRequired = lockRequired,
                         lockMessage = lockMessage,
                         pendingOrderId = pendingOrderId,
+                        pendingTab = pendingTab,
                         onRequestUnlock = ::requestUnlock,
                         onUnlocked = { lockMessage = null; lockRequired = false },
-                        onOrderHandled = { pendingOrderId = null }
+                        onOrderHandled = { pendingOrderId = null },
+                        onTabHandled = { pendingTab = null }
                     )
                 }
             }
@@ -77,6 +81,7 @@ class MainActivity : FragmentActivity() {
         super.onNewIntent(intent)
         setIntent(intent)
         intent.getStringExtra(AdminNotificationHelper.EXTRA_ORDER_ID)?.let { pendingOrderId = it }
+        intent.getStringExtra(AdminNotificationHelper.EXTRA_OPEN_TAB)?.let { pendingTab = it }
     }
 
     override fun onStop() {
@@ -142,9 +147,11 @@ private fun DeveloperOnlyApp(
     lockRequired: Boolean,
     lockMessage: String?,
     pendingOrderId: String?,
+    pendingTab: String?,
     onRequestUnlock: () -> Unit,
     onUnlocked: () -> Unit,
-    onOrderHandled: () -> Unit
+    onOrderHandled: () -> Unit,
+    onTabHandled: () -> Unit
 ) {
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
@@ -203,6 +210,8 @@ private fun DeveloperOnlyApp(
                 profile = requireNotNull(profile),
                 openOrderId = pendingOrderId,
                 onOrderOpenHandled = onOrderHandled,
+                openTab = pendingTab,
+                onTabOpenHandled = onTabHandled,
                 onSignOut = { signOut() }
             )
             else -> DeveloperLoginScreen(

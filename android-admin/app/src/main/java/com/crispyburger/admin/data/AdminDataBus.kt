@@ -10,7 +10,7 @@ import kotlinx.coroutines.flow.asSharedFlow
  * each ViewModel refreshes only the sections its data belongs to (debounced).
  */
 object AdminDataBus {
-    enum class Kind { ORDERS, PAYMENTS, INVENTORY, PRODUCTS }
+    enum class Kind { ORDERS, PAYMENTS, INVENTORY, PRODUCTS, TICKETS }
 
     data class Change(val kind: Kind, val origin: Any? = null)
 

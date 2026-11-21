@@ -147,3 +147,26 @@ data class AdminSalesReport(
     /** True when the server aggregate was unavailable and totals were computed from a capped download. */
     val approximate: Boolean
 )
+
+@Serializable
+data class AdminTicketOrder(
+    @SerialName("order_no") val orderNo: String = ""
+)
+
+/** A customer support ticket (one-way report; the owner only sets Open / Resolved). */
+@Serializable
+data class AdminTicket(
+    val id: String,
+    @SerialName("ticket_no") val ticketNo: String,
+    val message: String,
+    @SerialName("customer_name") val customerName: String,
+    @SerialName("customer_phone") val customerPhone: String,
+    @SerialName("attachment_path") val attachmentPath: String? = null,
+    val status: String,
+    @SerialName("created_at") val createdAt: String,
+    @SerialName("resolved_at") val resolvedAt: String? = null,
+    /** Embedded order (null for general questions, or if the order was deleted). */
+    val orders: AdminTicketOrder? = null
+) {
+    val orderNo: String? get() = orders?.orderNo?.takeIf { it.isNotBlank() }
+}

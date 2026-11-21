@@ -20,32 +20,31 @@ It assumes `orders.id` is a `uuid`. If `orders.id` has another type, change `ord
 
 ## 2. Push notification (background)
 
-While the admin app is open it is notified live (Supabase realtime). For notifications when the app is closed, add a
-**Database Webhook** that calls your existing push Edge Function:
+The repository Edge Function at supabase/functions/send-admin-push/index.ts handles new support-ticket inserts and
+sends an FCM data message with type = "ticket", ticket_id, title and body. The Android app deduplicates the event and
+opens the Tickets tab when the notification is tapped.
 
-- Dashboard → Database → Webhooks → *Create*: table `public.support_tickets`, event **Insert**, type *Supabase Edge Functions*,
-  pick your existing push function.
-- In that function, handle the new table. The Android app already understands this FCM **data** message
-  (`CbmsFirebaseMessagingService`): `type = "ticket"`, plus `title` / `body`; `ticket_id` is used to de-duplicate.
+Configure these Edge Function secrets (never commit their values):
 
-```ts
-// inside your existing handler, where you branch on payload.table
-if (payload.table === "support_tickets" && payload.type === "INSERT") {
-  const t = payload.record;
-  const preview = String(t.message ?? "").split("\n")[0].slice(0, 100);
-  return sendToAllOwnerDevices({            // your existing helper that reads device_tokens + calls FCM
-    data: {
-      type: "ticket",
-      event_id: t.id,
-      ticket_id: t.id,
-      title: "New support ticket",
-      body: `${t.ticket_no} from ${t.customer_name}: ${preview}`,
-    },
-  });
-}
-```
+- SUPABASE_URL
+- CBMS_SUPABASE_SERVICE_ROLE_KEY (or SUPABASE_SERVICE_ROLE_KEY)
+- FIREBASE_SERVICE_ACCOUNT_JSON
+- CBMS_WEBHOOK_SECRET
+- CBMS_OWNER_EMAIL (the active OWNER account email used to select device tokens)
 
-Send it as a **data** message (not only a `notification` payload) so the app can build the notification and open the Tickets tab when tapped.
+Deploy the function using:
+supabase functions deploy send-admin-push --no-verify-jwt
+
+In Supabase Dashboard, create a Database Webhook:
+
+- Schema: public
+- Table: support_tickets
+- Event: Insert
+- Target: Supabase Edge Function send-admin-push
+- Header: x-cbms-webhook-secret = the same value as CBMS_WEBHOOK_SECRET
+
+The Edge Function looks up active OWNER device tokens and sends only a data message. Realtime notifications cover the
+case where the admin app is in the foreground; FCM covers background delivery.
 
 ## 3. Quick test
 

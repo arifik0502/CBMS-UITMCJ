@@ -40,6 +40,12 @@ object ErrorMessages {
             message.contains("not_out_for_delivery") ->
                 "The live collect_cash function still has the old delivery restriction. Apply the latest cash-payment migration in Supabase, then retry."
 
+            message.contains("ticket_not_found") ->
+                "This ticket could not be found. Refresh the list."
+
+            message.contains("invalid_status") ->
+                "That ticket status is not valid."
+
             message.contains("order_closed") ->
                 "This order is cancelled or closed and cannot accept cash."
 

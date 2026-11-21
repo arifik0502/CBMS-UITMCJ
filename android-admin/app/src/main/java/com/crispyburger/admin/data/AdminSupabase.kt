@@ -348,6 +348,40 @@ object AdminSupabase : AdminApi {
         )
     }
 
+    // ---- support tickets ----
+
+    override suspend fun loadTickets(maxRows: Int): List<AdminTicket> {
+        requireDeveloperSession()
+        return client.from("support_tickets")
+            .select(
+                columns = Columns.raw(
+                    "id,ticket_no,message,customer_name,customer_phone,attachment_path," +
+                        "status,created_at,resolved_at,orders(order_no)"
+                )
+            ) {
+                order("created_at", Order.DESCENDING)
+                limit(maxRows.toLong())
+            }
+            .decodeList<AdminTicket>()
+    }
+
+    override suspend fun setTicketStatus(ticketId: String, status: String) {
+        requireDeveloperSession()
+        client.postgrest.rpc(
+            "set_support_ticket_status",
+            buildJsonObject {
+                put("p_ticket_id", ticketId)
+                put("p_status", status)
+            }
+        )
+    }
+
+    override suspend fun createTicketPhotoUrl(path: String): String {
+        requireDeveloperSession()
+        return client.storage.from("ticket-attachments")
+            .createSignedUrl(path = path, expiresIn = 5.minutes)
+    }
+
     // ---- sales report ----
 
     override suspend fun loadSalesReport(from: LocalDate, to: LocalDate): AdminSalesReport {

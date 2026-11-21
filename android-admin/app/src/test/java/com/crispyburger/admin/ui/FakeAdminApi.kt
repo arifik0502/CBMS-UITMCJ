@@ -9,6 +9,7 @@ import com.crispyburger.admin.data.AdminPayment
 import com.crispyburger.admin.data.AdminProduct
 import com.crispyburger.admin.data.AdminSalesOrder
 import com.crispyburger.admin.data.AdminSalesReport
+import com.crispyburger.admin.data.AdminTicket
 import com.crispyburger.admin.data.ErrorMessages
 import java.time.LocalDate
 
@@ -54,6 +55,22 @@ class FakeAdminApi : AdminApi {
     override suspend fun loadInventory(): List<AdminInventoryItem> = emptyList()
     override suspend fun adjustInventory(productId: String, type: String, quantity: Int, reason: String) = Unit
 
+    var tickets: List<AdminTicket> = emptyList()
+    var failTickets: Throwable? = null
+    val ticketCalls = mutableListOf<String>()
+
+    override suspend fun loadTickets(maxRows: Int): List<AdminTicket> {
+        ticketCalls += "load"
+        failTickets?.let { throw it }
+        return tickets
+    }
+
+    override suspend fun setTicketStatus(ticketId: String, status: String) {
+        ticketCalls += "status:$ticketId:$status"
+        failAction?.let { throw it }
+    }
+
+    override suspend fun createTicketPhotoUrl(path: String): String = "https://example.test/$path"
     override suspend fun loadSalesReport(from: LocalDate, to: LocalDate): AdminSalesReport =
         throw UnsupportedOperationException()
 

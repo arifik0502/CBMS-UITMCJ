@@ -36,8 +36,8 @@ android {
         applicationId = "com.crispyburger.admin"
         minSdk = 26
         targetSdk = 35
-        versionCode = 13
-        versionName = "0.4.0"
+        versionCode = 14
+        versionName = "0.5.0"
         buildConfigField("String", "SUPABASE_URL", quoted(localProp("supabase.url")))
         buildConfigField("String", "SUPABASE_ANON_KEY", quoted(localProp("supabase.anonKey")))
         // Optional client-side allow-list. The server (OWNER role + RLS) is still the real gate.

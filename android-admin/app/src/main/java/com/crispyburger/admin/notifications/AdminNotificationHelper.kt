@@ -21,6 +21,8 @@ object AdminNotificationHelper {
     const val ORDERS_CHANNEL_ID = "cbms_admin_orders"
     const val PAYMENTS_CHANNEL_ID = "cbms_admin_payments"
     const val EXTRA_ORDER_ID = "cbms_order_id"
+    const val EXTRA_OPEN_TAB = "cbms_open_tab"
+    const val TAB_TICKETS = "tickets"
 
     private const val PREFS_NAME = "cbms_admin_notification_state"
     // New key: the old "recent_event_keys" was a StringSet and reading it as a String would crash.
@@ -36,7 +38,8 @@ object AdminNotificationHelper {
         title: String,
         body: String,
         isPayment: Boolean = eventKey.startsWith("payment:"),
-        orderId: String? = null
+        orderId: String? = null,
+        openTab: String? = null
     ) {
         showOrderEvent(
             context = context,
@@ -44,7 +47,8 @@ object AdminNotificationHelper {
             title = title,
             message = body,
             isPayment = isPayment,
-            orderId = orderId
+            orderId = orderId,
+            openTab = openTab
         )
     }
 
@@ -88,7 +92,8 @@ object AdminNotificationHelper {
         title: String,
         message: String,
         isPayment: Boolean,
-        orderId: String? = null
+        orderId: String? = null,
+        openTab: String? = null
     ) {
         val appContext = context.applicationContext
         if (Build.VERSION.SDK_INT >= 33 &&
@@ -103,6 +108,7 @@ object AdminNotificationHelper {
         val intent = Intent(appContext, MainActivity::class.java).apply {
             flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
             if (!orderId.isNullOrBlank()) putExtra(EXTRA_ORDER_ID, orderId)
+            if (!openTab.isNullOrBlank()) putExtra(EXTRA_OPEN_TAB, openTab)
         }
         val pendingIntent = PendingIntent.getActivity(
             appContext,

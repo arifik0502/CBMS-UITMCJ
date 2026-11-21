@@ -52,6 +52,10 @@ object AdminRealtimeManager {
                 table = "inventory"
             }
 
+            val ticketsFlow = newChannel.postgresChangeFlow<PostgresAction>("public") {
+                table = "support_tickets"
+            }
+
             val newScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
             newScope.launch(start = CoroutineStart.UNDISPATCHED) {
@@ -70,6 +74,13 @@ object AdminRealtimeManager {
                 inventoryFlow.collect { action ->
                     handleInventory(context, action)
                     AdminDataBus.emit(AdminDataBus.Kind.INVENTORY)
+                }
+            }
+
+            newScope.launch(start = CoroutineStart.UNDISPATCHED) {
+                ticketsFlow.collect { action ->
+                    handleTickets(context, action)
+                    AdminDataBus.emit(AdminDataBus.Kind.TICKETS)
                 }
             }
 
@@ -178,6 +189,29 @@ object AdminRealtimeManager {
             body = "A payment receipt is ready for verification.",
             isPayment = true,
             orderId = orderId
+        )
+    }
+
+    /** New ticket inserts notify the owner and refresh the ticket list. */
+    private fun handleTickets(context: Context, action: PostgresAction) {
+        if (action !is PostgresAction.Insert) return
+        val record = action.record
+        val ticketId = record.value("id") ?: return
+        val ticketNo = record.value("ticket_no") ?: "A ticket"
+        val name = record.value("customer_name")?.take(40)
+        val preview = record.value("message")?.lineSequence()?.firstOrNull()?.take(100).orEmpty()
+
+        AdminNotificationHelper.post(
+            context = context,
+            eventKey = "ticket:$ticketId",
+            title = "New support ticket",
+            body = buildString {
+                append(ticketNo)
+                if (!name.isNullOrBlank()) append(" from ").append(name)
+                if (preview.isNotBlank()) append(": ").append(preview)
+            },
+            isPayment = false,
+            openTab = AdminNotificationHelper.TAB_TICKETS
         )
     }
 

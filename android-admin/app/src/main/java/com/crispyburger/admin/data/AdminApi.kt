@@ -28,6 +28,10 @@ interface AdminApi {
     suspend fun loadInventory(): List<AdminInventoryItem>
     suspend fun adjustInventory(productId: String, type: String, quantity: Int, reason: String)
 
+    suspend fun loadTickets(maxRows: Int = 200): List<AdminTicket>
+    suspend fun setTicketStatus(ticketId: String, status: String)
+    suspend fun createTicketPhotoUrl(path: String): String
+
     suspend fun loadSalesReport(from: LocalDate, to: LocalDate): AdminSalesReport
     suspend fun loadAllDeliveredOrders(from: LocalDate, to: LocalDate): List<AdminSalesOrder>
 

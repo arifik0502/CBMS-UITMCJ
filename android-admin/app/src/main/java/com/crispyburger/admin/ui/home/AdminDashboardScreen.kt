@@ -12,6 +12,8 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.Badge
+import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
@@ -36,6 +38,7 @@ import androidx.core.content.ContextCompat
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.repeatOnLifecycle
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.crispyburger.admin.data.AdminRealtimeManager
 import com.crispyburger.admin.data.DeveloperProfile
@@ -50,6 +53,7 @@ private enum class DashboardTab(val label: String, val glyph: String) {
     ORDERS("Orders", "🧾"),
     MENU("Menu", "🍔"),
     STOCK("Stock", "📦"),
+    TICKETS("Tickets", "🎫"),
     REPORTS("Reports", "📊")
 }
 
@@ -58,6 +62,8 @@ fun AdminDashboardScreen(
     profile: DeveloperProfile,
     openOrderId: String?,
     onOrderOpenHandled: () -> Unit,
+    openTab: String?,
+    onTabOpenHandled: () -> Unit,
     onSignOut: () -> Unit
 ) {
     val context = LocalContext.current
@@ -67,6 +73,8 @@ fun AdminDashboardScreen(
     val catalogVm: CatalogViewModel = viewModel()
     val inventoryVm: InventoryViewModel = viewModel()
     val reportVm: ReportViewModel = viewModel()
+    val ticketsVm: TicketsViewModel = viewModel()
+    val ticketsState by ticketsVm.state.collectAsStateWithLifecycle()
 
     var tabIndex by rememberSaveable { mutableIntStateOf(0) }
     var realtimeStatus by remember { mutableStateOf("Connecting") }
@@ -102,6 +110,16 @@ fun AdminDashboardScreen(
                     runCatching { AdminRealtimeManager.stop() }
                 }
             }
+        }
+    }
+
+    LaunchedEffect(Unit) { ticketsVm.ensureLoaded() }
+
+    LaunchedEffect(openTab) {
+        if (openTab == AdminNotificationHelper.TAB_TICKETS) {
+            tabIndex = DashboardTab.TICKETS.ordinal
+            ticketsVm.refresh(silent = true)
+            onTabOpenHandled()
         }
     }
 
@@ -143,6 +161,7 @@ fun AdminDashboardScreen(
                         catalogVm.reset()
                         inventoryVm.reset()
                         reportVm.reset()
+                        ticketsVm.reset()
                         onSignOut()
                     }) { Text("Sign out") }
                 }
@@ -155,7 +174,13 @@ fun AdminDashboardScreen(
                     NavigationBarItem(
                         selected = index == tabIndex,
                         onClick = { tabIndex = index },
-                        icon = { Text(item.glyph) },
+                        icon = {
+                            if (item == DashboardTab.TICKETS && ticketsState.openCount > 0) {
+                                BadgedBox(badge = { Badge { Text(ticketsState.openCount.toString()) } }) {
+                                    Text(item.glyph)
+                                }
+                            } else Text(item.glyph)
+                        },
                         label = { Text(item.label) }
                     )
                 }
@@ -169,6 +194,7 @@ fun AdminDashboardScreen(
                     Box(Modifier.weight(1f)) { CatalogScreen(catalogVm) }
                 }
                 DashboardTab.STOCK -> InventoryScreen(inventoryVm)
+                DashboardTab.TICKETS -> TicketsScreen(ticketsVm)
                 DashboardTab.REPORTS -> Column(Modifier.fillMaxSize()) {
                     Box(Modifier.weight(1f)) { ReportScreen(reportVm) }
                     HorizontalDivider()
