@@ -1,9 +1,11 @@
 import { lazy, Suspense } from "react";
 import { Route, Routes } from "react-router-dom";
 import { isConfigured } from "./lib/supabase";
+import { CartProvider } from "./lib/cart";
 import { Header, LinkButton, LoadingScreen, Shell } from "./components/ui";
 import Home from "./pages/Home";
 const OrderPage = lazy(() => import("./pages/Order"));
+const OrdersPage = lazy(() => import("./pages/Orders"));
 const PayPage = lazy(() => import("./pages/Pay"));
 const TrackPage = lazy(() => import("./pages/Track"));
 
@@ -38,14 +40,17 @@ function SetupNeeded() {
 export default function App() {
   if (!isConfigured) return <SetupNeeded />;
   return (
-    <Suspense fallback={<Shell><LoadingScreen /></Shell>}>
-    <Routes>
-      <Route path="/" element={<Home />} />
-      <Route path="/order" element={<OrderPage />} />
-      <Route path="/pay/:token" element={<PayPage />} />
-      <Route path="/track/:token" element={<TrackPage />} />
-      <Route path="*" element={<NotFound />} />
-    </Routes>
-    </Suspense>
+    <CartProvider>
+      <Suspense fallback={<Shell><LoadingScreen /></Shell>}>
+        <Routes>
+          <Route path="/" element={<Home />} />
+          <Route path="/order" element={<OrderPage />} />
+          <Route path="/orders" element={<OrdersPage />} />
+          <Route path="/pay/:token" element={<PayPage />} />
+          <Route path="/track/:token" element={<TrackPage />} />
+          <Route path="*" element={<NotFound />} />
+        </Routes>
+      </Suspense>
+    </CartProvider>
   );
 }

@@ -1,7 +1,8 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useParams, useSearchParams } from "react-router-dom";
 import { Button, ErrorScreen, Header, LinkButton, LoadingScreen, Notice, Pill, Shell } from "../components/ui";
 import { formatRM, formatTime, roomLabel } from "../lib/format";
+import { updateFromView } from "../lib/orderHistory";
 import { ORDER_LABEL, PAYMENT_LABEL, STEPS, stepIndex } from "../lib/statusText";
 import { useOrder } from "../lib/useOrder";
 
@@ -11,6 +12,11 @@ export default function TrackPage() {
   const justPlaced = params.get("placed") === "1";
   const { order, error, loading, reload } = useOrder(token);
   const [copied, setCopied] = useState(false);
+
+  // Keep "My orders" on this device up to date with what the customer just saw.
+  useEffect(() => {
+    if (token && order) updateFromView(token, order);
+  }, [token, order]);
 
   if (loading && !order) return <Shell><Header back="/" /><LoadingScreen label="Finding your order" /></Shell>;
   if (error || !order) return <Shell><Header back="/" /><ErrorScreen message={error ?? "Order not found."} onRetry={reload} /></Shell>;
@@ -143,6 +149,7 @@ export default function TrackPage() {
       )}
 
       <div className="mt-5 space-y-3">
+        <LinkButton to="/orders" variant="secondary">All my orders</LinkButton>
         <Button variant="secondary" onClick={share}>{copied ? "Link copied" : "Save or share tracking link"}</Button>
         <p className="text-center text-xs text-muted">Anyone with this link can see this order. Keep it private.</p>
       </div>

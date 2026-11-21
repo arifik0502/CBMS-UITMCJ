@@ -1,9 +1,11 @@
-import { useEffect, useMemo, useState, type FormEvent } from "react";
+import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button, ErrorScreen, Field, Header, inputClass, LinkButton, LoadingScreen, Notice, Shell } from "../components/ui";
 import { createOrder } from "../lib/api";
+import { useCart } from "../lib/cart";
 import { friendlyError } from "../lib/errors";
 import { formatRM, roomLabel } from "../lib/format";
+import { rememberOrder } from "../lib/orderHistory";
 import {
   IDEMPOTENCY_KEY, LAST_ORDER_KEY, safeSessionGet, safeSessionRemove, safeSessionSet, safeSet
 } from "../lib/storage";
@@ -33,7 +35,8 @@ export default function OrderPage() {
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [clock, setClock] = useState(() => new Date());
-  const [cartHasItem, setCartHasItem] = useState(true);
+  const cart = useCart();
+  const autoAdded = useRef(false);
 
   useEffect(() => {
     const timer = window.setInterval(() => setClock(new Date()), 15000);
@@ -41,6 +44,22 @@ export default function OrderPage() {
   }, []);
 
   const building = useMemo(() => data?.buildings.find((b) => b.id === values.buildingId), [data, values.buildingId]);
+
+  // Arriving here with an empty cart (e.g. "Place a new order") starts with one burger, like before.
+  // Afterwards the cart is the single source of truth, shared with the menu page.
+  const cartProductId = data?.product?.id;
+  const cartMax = data ? Math.max(1, Math.min(data.max_qty_per_order, data.available_stock)) : 1;
+  const cartReady = Boolean(data && data.accepting_orders && data.available_stock > 0);
+  useEffect(() => {
+    if (!cartProductId || !cartReady) return;
+    const qty = cart.quantityOf(cartProductId);
+    if (!autoAdded.current) {
+      // Only the very first evaluation may add; a later "Remove" must leave the cart empty.
+      autoAdded.current = true;
+      if (qty === 0) { cart.add(cartProductId, cartMax); return; }
+    }
+    if (qty > cartMax) cart.setQuantity(cartProductId, cartMax, cartMax);
+  }, [cart, cartProductId, cartReady, cartMax]);
 
   if (loading) return <Shell><Header back="/" /><LoadingScreen label="Loading" /></Shell>;
   if (error || !data) return <Shell><Header back="/" /><ErrorScreen message={error ?? "No data."} onRetry={reload} /></Shell>;
@@ -72,7 +91,11 @@ export default function OrderPage() {
     );
   }
 
-  const total = cartHasItem ? product.price_cents * values.quantity : 0;
+  const productName = product.name;
+  const quantity = cart.quantityOf(product.id);
+  const cartHasItem = quantity > 0;
+  const form: OrderFormValues = { ...values, quantity };
+  const total = cartHasItem ? product.price_cents * quantity : 0;
 
   function set<K extends keyof OrderFormValues>(key: K, value: OrderFormValues[K]) {
     setValues((v) => ({ ...v, [key]: value }));
@@ -82,7 +105,7 @@ export default function OrderPage() {
 
   function cancelCart() {
     if (!window.confirm("Cancel this cart and return to the menu? Your selections will be cleared.")) return;
-    setCartHasItem(false);
+    cart.clear();
     setValues({
       name: "", phone: "", buildingId: "", floor: "", room: "", quantity: 1, method: "",
       tripId: "", custom: false, note: ""
@@ -115,7 +138,7 @@ export default function OrderPage() {
       return;
     }
 
-    const found = validateOrder(values, maxQty);
+    const found = validateOrder(form, maxQty);
     setErrors(found);
     if (Object.keys(found).length > 0) {
       const first = Object.keys(found)[0];
@@ -131,7 +154,7 @@ export default function OrderPage() {
         buildingId: values.buildingId,
         floor: Number(values.floor),
         room: normalizeRoom(values.room),
-        quantity: values.quantity,
+        quantity,
         method: values.method as "CASH" | "DUITNOW",
         idempotencyKey: idempotencyKey(),
         tripId: values.tripId,
@@ -139,6 +162,16 @@ export default function OrderPage() {
       });
       safeSessionRemove(IDEMPOTENCY_KEY);
       safeSet(LAST_ORDER_KEY, ticket.tracking_token);
+      rememberOrder({
+        token: ticket.tracking_token,
+        orderNo: ticket.order_no,
+        totalCents: ticket.total_cents,
+        createdAt: new Date().toISOString(),
+        status: ticket.order_status,
+        paymentStatus: ticket.payment_status,
+        items: [{ name: productName, quantity }]
+      });
+      cart.clear();
       navigate(
         ticket.payment_method === "DUITNOW"
           ? `/pay/${ticket.tracking_token}`
@@ -170,9 +203,9 @@ export default function OrderPage() {
           <div className="flex items-center justify-between gap-3">
             <div>
               <h2 className="font-display text-xl font-extrabold">Shopping cart</h2>
-              <p className="text-sm text-muted">{cartHasItem ? `${values.quantity} burger${values.quantity === 1 ? "" : "s"} in your cart` : "No items added yet"}</p>
+              <p className="text-sm text-muted">{cartHasItem ? `${quantity} burger${quantity === 1 ? "" : "s"} in your cart` : "No items added yet"}</p>
             </div>
-            <span className="rounded-full border-2 border-ink bg-bun px-3 py-1 text-sm font-bold">{cartHasItem ? values.quantity : 0} item{cartHasItem && values.quantity !== 1 ? "s" : ""}</span>
+            <span className="rounded-full border-2 border-ink bg-bun px-3 py-1 text-sm font-bold">{quantity} item{quantity !== 1 ? "s" : ""}</span>
           </div>
 
           {cartHasItem ? (
@@ -183,7 +216,7 @@ export default function OrderPage() {
                     <p className="font-display text-lg font-extrabold">{product.name}</p>
                     <p className="text-sm text-muted">{formatRM(product.price_cents)} each</p>
                   </div>
-                  <button type="button" onClick={() => { setCartHasItem(false); setSubmitError(null); }}
+                  <button type="button" onClick={() => { cart.remove(product.id); setSubmitError(null); }}
                     className="min-h-10 rounded-lg px-3 text-sm font-bold text-ketchup underline underline-offset-2">
                     Remove
                   </button>
@@ -191,12 +224,12 @@ export default function OrderPage() {
                 <div className="mt-4 flex items-center justify-between gap-3">
                   <span className="text-sm font-semibold">Quantity</span>
                   <div className="flex items-center gap-2" role="group" aria-label="Cart quantity">
-                    <button type="button" aria-label="Decrease quantity" disabled={values.quantity <= 1}
-                      onClick={() => set("quantity", values.quantity - 1)}
+                    <button type="button" aria-label="Decrease quantity" disabled={quantity <= 1}
+                      onClick={() => cart.setQuantity(product.id, quantity - 1, maxQty)}
                       className="grid size-10 place-items-center rounded-full border-2 border-ink bg-paper text-xl font-bold disabled:opacity-40">−</button>
-                    <output aria-live="polite" className="w-8 text-center font-display text-xl font-extrabold">{values.quantity}</output>
-                    <button type="button" aria-label="Increase quantity" disabled={values.quantity >= maxQty}
-                      onClick={() => set("quantity", values.quantity + 1)}
+                    <output aria-live="polite" className="w-8 text-center font-display text-xl font-extrabold">{quantity}</output>
+                    <button type="button" aria-label="Increase quantity" disabled={quantity >= maxQty}
+                      onClick={() => cart.setQuantity(product.id, quantity + 1, maxQty)}
                       className="grid size-10 place-items-center rounded-full border-2 border-ink bg-paper text-xl font-bold disabled:opacity-40">+</button>
                   </div>
                 </div>
@@ -218,7 +251,7 @@ export default function OrderPage() {
             <div className="space-y-3 rounded-xl border-2 border-dashed border-ink p-4 text-center">
               <p className="font-bold">Your cart is empty</p>
               <p className="text-sm text-muted">Add a crispy chicken burger to continue.</p>
-              <Button type="button" onClick={() => setCartHasItem(true)}>Add burger</Button>
+              <Button type="button" onClick={() => cart.add(product.id, maxQty)}>Add burger</Button>
             </div>
           )}
           <button type="button" onClick={cancelCart}
