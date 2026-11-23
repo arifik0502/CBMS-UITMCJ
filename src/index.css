@@ -62,3 +62,11 @@ body {
   .burger-drop { animation: none; }
   * { scroll-behavior: auto !important; }
 }
+
+.storefront-hero {
+  background-color: var(--color-paper);
+  background-image:
+    radial-gradient(ellipse at 82% 100%, #ffe2a3 0%, transparent 58%),
+    repeating-linear-gradient(135deg, transparent 0 12px, #f7eedc 12px 13px);
+  box-shadow: 4px 4px 0 var(--color-ink);
+}
