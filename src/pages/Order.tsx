@@ -12,7 +12,7 @@ import {
   IDEMPOTENCY_KEY, LAST_ORDER_KEY, safeSessionGet, safeSessionRemove, safeSessionSet, safeSet
 } from "../lib/storage";
 import { useStorefront } from "../lib/useStorefront";
-import { tripDurationMinutes, tripHasEndedToday, tripIsSelectable } from "../lib/trips";
+import { tripDurationMinutes, tripEndsNextDay, tripHasEndedToday, tripIsSelectable } from "../lib/trips";
 import {
   normalizePhone, normalizeRoom, NOTE_MAX, validateOrder, type FormErrors, type OrderFormValues
 } from "../lib/validation";
@@ -342,7 +342,7 @@ export default function OrderPage() {
                     <input type="radio" name="trip" value={t.id} disabled={closed} checked={values.tripId === t.id}
                       onChange={() => set("tripId", t.id)} className="mt-1 size-5 accent-ink" />
                     <span>
-                      <span className="block font-bold">{t.label}: {t.start_label} to {t.end_label}</span>
+                      <span className="block font-bold">{t.label}: {t.start_label} to {t.end_label}{tripEndsNextDay(t) ? " (next day)" : ""}</span>
                       <span className="block text-sm text-muted">
                         {ended || t.closed_reason === "ENDED"
                           ? "This trip has ended for today"

@@ -36,8 +36,8 @@ android {
         applicationId = "com.crispyburger.admin"
         minSdk = 26
         targetSdk = 35
-        versionCode = 16
-        versionName = "0.6.0"
+        versionCode = 17
+        versionName = "0.6.1"
         buildConfigField("String", "SUPABASE_URL", quoted(localProp("supabase.url")))
         buildConfigField("String", "SUPABASE_ANON_KEY", quoted(localProp("supabase.anonKey")))
         // Optional sign-in email prefill. Supabase profile roles remain the real gate.

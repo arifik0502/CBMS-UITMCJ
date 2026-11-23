@@ -9,7 +9,7 @@ import { subtotalCents } from "../lib/cartLogic";
 import { formatRM } from "../lib/format";
 import { countByTab, readHistory } from "../lib/orderHistory";
 import { getOrderability, storefrontProducts } from "../lib/availability";
-import { tripHasEndedToday } from "../lib/trips";
+import { tripEndsNextDay, tripHasEndedToday } from "../lib/trips";
 import { useStorefront } from "../lib/useStorefront";
 import { useSiteConfig } from "../lib/SiteConfigContext";
 import type { SiteSection } from "../lib/siteConfig";
@@ -170,7 +170,7 @@ export default function Home() {
           <ul className="mt-3 space-y-2 text-sm">
             {data.trips.map((t) => (
               <li key={t.id} className="flex items-center justify-between gap-3">
-                <span className="font-semibold">{t.label}: {t.start_label} to {t.end_label}</span>
+                <span className="font-semibold">{t.label}: {t.start_label} to {t.end_label}{tripEndsNextDay(t) ? " (next day)" : ""}</span>
                 <span className={`shrink-0 rounded-full border-2 border-ink px-2.5 py-0.5 text-xs font-bold ${t.closed_reason || tripHasEndedToday(t, clock) ? "bg-line" : "bg-pickle text-white"}`}>
                   {tripHasEndedToday(t, clock) || t.closed_reason === "ENDED" ? "Ended today" : t.closed_reason ? "Closed" : `Order until ${t.end_label}`}
                 </span>

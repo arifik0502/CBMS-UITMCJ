@@ -28,7 +28,7 @@ data class TripDraft(
             label.trim().isNotEmpty() &&
             startTime.matches(Regex("^([01]\\d|2[0-3]):[0-5]\\d:00$")) &&
             endTime.matches(Regex("^([01]\\d|2[0-3]):[0-5]\\d:00$")) &&
-            endTime > startTime
+            endTime != startTime
 
     companion object {
         fun from(trip: AdminDeliveryTrip) = TripDraft(

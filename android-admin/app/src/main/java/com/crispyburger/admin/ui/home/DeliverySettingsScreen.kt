@@ -182,7 +182,8 @@ fun DeliverySettingsScreen(vm: DeliverySettingsViewModel) {
                                 Column(modifier = Modifier.weight(1f)) {
                                     Text(trip.label, fontWeight = FontWeight.Bold)
                                     Text(
-                                        displayTime(trip.startTime) + " – " + displayTime(trip.endTime),
+                                        displayTime(trip.startTime) + " – " + displayTime(trip.endTime) +
+                                            if (trip.endTime < trip.startTime) " · next day" else "",
                                         style = MaterialTheme.typography.bodyMedium
                                     )
                                 }
@@ -294,8 +295,10 @@ fun DeliverySettingsScreen(vm: DeliverySettingsViewModel) {
                             onCheckedChange = { tripDraft = draft.copy(isOpen = it) }
                         )
                     }
-                    if (draft.endTime <= draft.startTime) {
-                        MessageCard("End time must be later than start time.", isError = true)
+                    if (draft.endTime == draft.startTime) {
+                        MessageCard("Start and end time cannot be the same.", isError = true)
+                    } else if (draft.endTime < draft.startTime) {
+                        MessageCard("This trip ends the next day.", isError = false)
                     }
                 }
             },

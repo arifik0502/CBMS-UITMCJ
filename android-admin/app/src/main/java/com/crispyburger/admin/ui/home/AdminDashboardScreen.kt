@@ -55,7 +55,7 @@ private enum class DashboardTab(val label: String, val glyph: String) {
     STOCK("Stock", "📦"),
     TICKETS("Tickets", "🎫"),
     REPORTS("Reports", "📊"),
-    SITE("Website", "🎨")
+    SITE("Website", "🌐")
 }
 
 @Composable
@@ -75,7 +75,6 @@ fun AdminDashboardScreen(
     val inventoryVm: InventoryViewModel = viewModel()
     val reportVm: ReportViewModel = viewModel()
     val ticketsVm: TicketsViewModel = viewModel()
-    val siteVm: SiteViewModel = viewModel()
     val deliveryVm: DeliverySettingsViewModel = viewModel()
     val ticketsState by ticketsVm.state.collectAsStateWithLifecycle()
 
@@ -177,7 +176,6 @@ fun AdminDashboardScreen(
                         inventoryVm.reset()
                         reportVm.reset()
                         ticketsVm.reset()
-                        siteVm.reset()
                         deliveryVm.reset()
                         onSignOut()
                     }) { Text("Sign out") }
@@ -212,7 +210,7 @@ fun AdminDashboardScreen(
                 }
                 DashboardTab.STOCK -> InventoryScreen(inventoryVm)
                 DashboardTab.TICKETS -> TicketsScreen(ticketsVm)
-                DashboardTab.SITE -> WebsiteToolsScreen(siteVm, deliveryVm)
+                DashboardTab.SITE -> DeliverySettingsScreen(deliveryVm)
                 DashboardTab.REPORTS -> Column(Modifier.fillMaxSize()) {
                     Box(Modifier.weight(1f)) { ReportScreen(reportVm) }
                     HorizontalDivider()
