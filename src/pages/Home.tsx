@@ -57,20 +57,20 @@ export default function Home() {
   const cartTotal = subtotalCents(cart.lines, (id) => products.find((p) => p.id === id)?.price_cents);
 
   const renderHero = (s: SiteSection) => (
-    <section key={s.id} className="pt-4 text-center">
-      <h1 className="font-display text-[2.6rem] font-extrabold leading-[1.02] tracking-tight">{s.headline}</h1>
-      <div className="relative mx-auto mt-6 max-w-xs">
+    <section key={s.id} className="storefront-hero grid items-center gap-4 overflow-hidden rounded-3xl border-2 border-ink px-5 pt-7 text-center sm:grid-cols-2 sm:px-8 sm:py-5 sm:text-left">
+      <h1 className="font-display relative z-10 text-balance break-words text-[clamp(2.25rem,6vw,3.4rem)] font-extrabold leading-[0.98] tracking-tight">{s.headline}</h1>
+      <div className="relative mx-auto w-full max-w-52 sm:max-w-72">
         {s.image_url
-          ? <img src={s.image_url} alt="" width={400} height={360} className="mx-auto max-h-80 w-full rounded-2xl border-2 border-ink object-cover" />
+          ? <img src={s.image_url} alt="" width={400} height={360} className="mx-auto mb-4 max-h-64 w-full sm:mb-0 rounded-2xl border-2 border-ink object-cover" />
           : <img src="/burger.svg" alt="Crispy chicken burger" width={400} height={360} className="burger-drop w-full" />}
       </div>
     </section>
   );
 
   const renderMenu = (s: SiteSection) => (
-    <section key={s.id} className="mt-6 space-y-3" aria-labelledby="menu-title">
+    <section key={s.id} className="mt-9 space-y-4" aria-labelledby="menu-title">
       <div className="flex items-center justify-between gap-3">
-        <h2 id="menu-title" className="font-display text-2xl font-extrabold">{s.title || "Menu"}</h2>
+        <h2 id="menu-title" className="font-display text-3xl font-extrabold tracking-tight">{s.title || "Menu"}</h2>
         {cachedOnly ? (
           <Pill tone="warn">Saved menu · read-only</Pill>
         ) : !data.accepting_orders ? (
@@ -86,7 +86,7 @@ export default function Home() {
         <p className="rounded-xl border-2 border-dashed border-ink p-4 text-center text-sm font-semibold">The menu is empty right now.</p>
       )}
 
-      <ul className="space-y-3">
+      <ul className="grid gap-5 sm:grid-cols-2">
         {products.map((p) => {
           const qty = cart.quantityOf(p.id);
           const productMax = Math.max(0, Math.min(maxQty, p.available_stock));
@@ -95,18 +95,18 @@ export default function Home() {
           const lowStock = p.available_stock > 0 && p.available_stock <= 10;
           const canAdd = canOrder && !itemSoldOut && cart.count < maxQty;
           return (
-            <li key={p.id} className="ticket overflow-hidden">
+            <li key={p.id} className="ticket flex min-w-0 flex-col overflow-hidden">
               {p.image_url && (
                 <img
                   src={p.image_url}
                   alt={p.name}
                   loading="lazy"
-                  className="h-48 w-full border-b-2 border-ink object-cover"
+                  className="aspect-[16/9] w-full border-b-2 border-ink object-cover"
                 />
               )}
-              <div className="p-4">
+              <div className="flex flex-1 flex-col p-5">
                 <div className="flex items-start justify-between gap-3">
-                  <div>
+                  <div className="min-w-0 break-words">
                     <h3 className="font-display text-xl font-extrabold">{p.name}</h3>
                     {p.description && <p className="mt-1 text-sm text-muted">{p.description}</p>}
                     <div className="mt-2">
@@ -115,13 +115,13 @@ export default function Home() {
                           : <Pill tone="good">In stock</Pill>}
                     </div>
                   </div>
-                  <span className="shrink-0 rounded-full border-2 border-ink bg-ketchup px-3 py-1 font-display text-lg font-extrabold text-white">
+                  <span className="shrink-0 font-display text-xl font-extrabold tabular-nums text-ketchup">
                     {formatRM(p.price_cents)}
                   </span>
                 </div>
-                <div className="mt-4">
+                <div className="mt-auto pt-5">
                   {qty > 0 ? (
-                    <div className="flex items-center justify-between gap-3">
+                    <div className="flex flex-wrap items-center justify-between gap-3">
                       <Stepper value={qty} min={0} max={Math.max(1, lineMax)} label={`${p.name} quantity`}
                         onChange={(q) => cart.setQuantity(p.id, q, Math.max(1, lineMax))} />
                       <button type="button" onClick={cart.openDrawer}
@@ -245,11 +245,11 @@ export default function Home() {
   }
 
   return (
-    <Shell>
-      <header className="flex items-center justify-between gap-2 py-3">
+    <Shell wide>
+      <header className="flex items-center justify-between gap-3 pb-4 pt-1">
         <span className="font-display text-xl font-extrabold tracking-tight">{site.brand_name || data.business_name}</span>
         <div className="flex items-center gap-2">
-          <Link to="/orders" className="relative min-h-11 rounded-full border-2 border-ink bg-paper px-4 py-2 text-sm font-bold">
+          <Link to="/orders" className="relative inline-flex min-h-11 items-center whitespace-nowrap rounded-full border-2 border-ink bg-paper px-4 py-2 text-sm font-bold">
             My orders
             {activeOrders > 0 && (
               <span className="absolute -right-1.5 -top-1.5 grid size-5 place-items-center rounded-full bg-ketchup text-[0.7rem] font-extrabold text-white"
