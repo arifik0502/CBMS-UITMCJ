@@ -12,7 +12,7 @@ import {
   IDEMPOTENCY_KEY, LAST_ORDER_KEY, safeSessionGet, safeSessionRemove, safeSessionSet, safeSet
 } from "../lib/storage";
 import { useStorefront } from "../lib/useStorefront";
-import { tripDurationMinutes, tripEndsNextDay, tripHasEndedToday, tripIsSelectable } from "../lib/trips";
+import { tripClosedReason, tripDurationMinutes, tripEndsNextDay, tripHasEndedToday, tripIsSelectable, tripOrderDeadline } from "../lib/trips";
 import {
   normalizePhone, normalizeRoom, NOTE_MAX, validateOrder, type FormErrors, type OrderFormValues
 } from "../lib/validation";
@@ -62,9 +62,7 @@ export default function OrderPage() {
   const total = subtotalCents(cart.lines, (id) => products.find((p) => p.id === id)?.price_cents);
   const anyStock = products.some((p) => p.available_stock > 0);
 
-  const anyTripOpen = data.trips.some(
-    (trip) => trip.closed_reason === null && !tripHasEndedToday(trip, clock)
-  );
+  const anyTripOpen = data.trips.some((trip) => tripIsSelectable(trip, clock));
 
   if (products.length === 0 || !data.accepting_orders || !anyStock || !anyTripOpen) {
     return (
@@ -334,8 +332,8 @@ export default function OrderPage() {
             <p className="mt-1 text-sm text-muted">Choose your preferred delivery time. Orders remain open until the selected trip ends. All times use Malaysia time.</p>
             <div className="mt-3 space-y-3">
               {data.trips.map((t) => {
-                const ended = tripHasEndedToday(t, clock);
-                const closed = t.closed_reason !== null || ended;
+                const reason = tripClosedReason(t, clock);
+                const closed = reason !== null;
                 return (
                   <label key={t.id}
                     className={`flex min-h-14 items-start gap-3 rounded-xl border border-muted p-3 ${closed ? "cursor-not-allowed bg-line/50 opacity-60" : "cursor-pointer"} ${values.tripId === t.id ? "bg-bun/30 ring-1 ring-ink" : closed ? "" : "bg-white"} has-[:focus-visible]:outline-3 has-[:focus-visible]:outline-ketchup`}>
@@ -344,11 +342,11 @@ export default function OrderPage() {
                     <span>
                       <span className="block font-bold">{t.label}: {t.start_label} to {t.end_label}{tripEndsNextDay(t) ? " (next day)" : ""}</span>
                       <span className="block text-sm text-muted">
-                        {ended || t.closed_reason === "ENDED"
+                        {reason === "ENDED"
                           ? "This trip has ended for today"
                           : closed
-                            ? t.closed_reason === "TEAM" ? "Closed by the team" : `Orders closed at ${t.closes_label}`
-                            : `Order until ${t.end_label} · ${tripDurationMinutes(t)}-minute delivery window`}
+                            ? reason === "TEAM" ? "Closed by the team" : `Orders closed at ${t.closes_label}`
+                            : `${tripOrderDeadline(t, clock)} · ${tripDurationMinutes(t)}-minute delivery window`}
                       </span>
                     </span>
                   </label>

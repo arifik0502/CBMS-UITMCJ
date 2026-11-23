@@ -43,8 +43,34 @@ export function tripHasEndedToday(trip: Trip, now: Date): boolean {
   return current >= end;
 }
 
+/**
+ * Server trip statuses are fetched periodically. ENDED can be stale just
+ * after midnight; derive the current daily-window status from Malaysia time.
+ * Manual team closures and cutoffs are always respected.
+ */
+export function tripClosedReason(trip: Trip, now: Date): Trip["closed_reason"] {
+  if (trip.closed_reason === "TEAM" || trip.closed_reason === "CUTOFF") {
+    return trip.closed_reason;
+  }
+  return tripHasEndedToday(trip, now) ? "ENDED" : null;
+}
+
 export function tripIsSelectable(trip: Trip, now: Date): boolean {
-  return trip.closed_reason === null && !tripHasEndedToday(trip, now);
+  return tripClosedReason(trip, now) === null;
+}
+
+/** For overnight windows, show whether their 2 AM end is today or tomorrow. */
+export function overnightEndDay(trip: Trip, now: Date): "today" | "tomorrow" | null {
+  if (!tripEndsNextDay(trip)) return null;
+  const end = timeMinutes(trip.end_time);
+  const current = malaysiaMinutes(now);
+  if (end === null || current === null) return null;
+  return current < end ? "today" : "tomorrow";
+}
+
+export function tripOrderDeadline(trip: Trip, now: Date): string {
+  const day = overnightEndDay(trip, now);
+  return "Order until " + trip.end_label + (day ? " " + day : "");
 }
 
 export function tripDurationMinutes(trip: Trip): number {
