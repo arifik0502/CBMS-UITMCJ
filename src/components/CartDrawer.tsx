@@ -62,7 +62,7 @@ export function CartDrawer({
         aria-modal="true"
         aria-labelledby="cart-title"
         tabIndex={-1}
-        className="relative max-h-[85vh] w-full max-w-md overflow-y-auto rounded-t-3xl border-2 border-b-0 border-ink bg-paper p-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] outline-none"
+        className="relative shadow-2xl max-h-[85dvh] w-full max-w-md overflow-y-auto rounded-t-3xl border border-b-0 border-line bg-paper p-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] outline-none"
       >
         <div className="flex items-center justify-between gap-3">
           <div>
@@ -74,7 +74,7 @@ export function CartDrawer({
         </div>
 
         {lines.length === 0 ? (
-          <div className="mt-5 rounded-xl border-2 border-dashed border-ink p-5 text-center">
+          <div className="mt-5 rounded-xl border border-dashed border-muted p-5 text-center">
             <p className="font-bold">Your cart is empty</p>
             <p className="mt-1 text-sm text-muted">Add something from the menu.</p>
           </div>
@@ -85,10 +85,10 @@ export function CartDrawer({
               const otherQty = totalQty - l.quantity;
               const lineMax = p ? Math.max(1, Math.min(p.available_stock, maxQty - otherQty)) : 1;
               return (
-                <li key={l.productId} className="rounded-xl border-2 border-ink bg-white p-4">
+                <li key={l.productId} className="rounded-xl border border-line bg-white p-4">
                   <div className="flex items-start justify-between gap-3">
                     <div className="flex min-w-0 items-start gap-3">
-                      {p?.image_url && <img src={p.image_url} alt="" className="size-16 shrink-0 rounded-lg border-2 border-ink object-cover" />}
+                      {p?.image_url && <img src={p.image_url} alt="" className="size-16 shrink-0 rounded-lg border border-line object-cover" />}
                       <div>
                         <p className="font-display text-lg font-extrabold">{p?.name ?? "Item no longer available"}</p>
                         {p && <p className="text-sm text-muted">{formatRM(p.price_cents)} each · {p.available_stock} in stock</p>}
@@ -115,7 +115,7 @@ export function CartDrawer({
 
         {lines.length > 0 && (
           <div className="mt-4 space-y-3">
-            <div className="flex justify-between border-t-2 border-ink pt-3 text-base">
+            <div className="flex justify-between border-t border-line pt-3 text-base">
               <span className="font-bold">Total</span>
               <span className="font-display text-2xl font-extrabold">{formatRM(total)}</span>
             </div>
@@ -131,7 +131,7 @@ export function CartDrawer({
             </Button>
             <button type="button"
               onClick={() => { if (window.confirm("Remove everything from your cart?")) cart.clear(); }}
-              className="min-h-11 w-full rounded-xl border-2 border-ketchup bg-paper px-4 py-2.5 text-sm font-bold text-ketchup">
+              className="min-h-11 w-full rounded-xl border border-ketchup bg-paper px-4 py-2.5 text-sm font-bold text-ketchup">
               Clear cart
             </button>
           </div>

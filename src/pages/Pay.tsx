@@ -77,7 +77,7 @@ export default function PayPage() {
   return (
     <Shell>
       <Header />
-      <h1 className="font-display text-3xl font-extrabold tracking-tight">Pay with DuitNow</h1>
+      <h1 className="font-display text-4xl font-extrabold tracking-tight">Pay with DuitNow</h1>
       <p className="mt-1 text-sm font-medium">Order {order.order_no}</p>
 
       {order.payment_status === "REJECTED" && (
@@ -89,7 +89,7 @@ export default function PayPage() {
       )}
 
       <section className="ticket mt-4">
-        <div className="p-5 text-center">
+        <div className="rounded-t-[inherit] bg-bun/25 p-6 text-center">
           <p className="text-sm font-bold text-muted">Amount to pay</p>
           <p className="font-display text-5xl font-extrabold tracking-tight">{formatRM(order.total_cents)}</p>
           {store?.duitnow_account_name && (
@@ -98,7 +98,7 @@ export default function PayPage() {
         </div>
         <div className="tear" />
         <div className="grid place-items-center p-5">
-          <img src={QR_URL} alt="DuitNow QR code" className="aspect-square w-full max-w-64 rounded-lg border-2 border-ink bg-white" />
+          <img src={QR_URL} alt="DuitNow QR code" className="aspect-square w-full max-w-64 rounded-lg border border-line bg-white" />
           <p className="mt-3 text-center text-sm text-muted">
             Open your banking or e-wallet app, scan this QR, and pay the exact amount.
           </p>
@@ -126,7 +126,7 @@ export default function PayPage() {
         </p>
 
         <label htmlFor="receipt"
-          className="flex min-h-14 cursor-pointer items-center justify-center rounded-xl border-2 border-dashed border-ink bg-white px-4 py-3 text-center font-bold has-[:focus-visible]:outline-3 has-[:focus-visible]:outline-ketchup">
+          className="flex min-h-14 cursor-pointer items-center justify-center rounded-xl border border-dashed border-muted bg-white px-4 py-3 text-center font-bold has-[:focus-visible]:outline-3 has-[:focus-visible]:outline-ketchup">
           {file ? "Choose a different image" : "Choose screenshot"}
           <input id="receipt" type="file" accept="image/jpeg,image/png,image/webp" className="sr-only" onChange={onPick} />
         </label>

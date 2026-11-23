@@ -56,9 +56,9 @@ export default function TrackPage() {
       )}
 
       <article className="ticket">
-        <div className="space-y-1 p-5">
+        <div className="space-y-1 rounded-t-[inherit] bg-bun/25 p-5">
           <p className="text-sm font-bold text-muted">Order</p>
-          <h1 className="font-display text-3xl font-extrabold tracking-tight">{order.order_no}</h1>
+          <h1 className="font-display text-4xl font-extrabold tracking-tight">{order.order_no}</h1>
           <div className="flex flex-wrap gap-2 pt-2">
             <Pill tone={cancelled ? "bad" : order.order_status === "DELIVERED" ? "good" : "neutral"}>
               {ORDER_LABEL[order.order_status]}
@@ -74,7 +74,7 @@ export default function TrackPage() {
               <span className="font-semibold">{formatRM(i.line_total_cents)}</span>
             </div>
           ))}
-          <div className="flex justify-between border-t-2 border-ink pt-2 text-base">
+          <div className="flex justify-between border-t border-line pt-2 text-base">
             <span className="font-bold">Total</span>
             <span className="font-display text-xl font-extrabold">{formatRM(order.total_cents)}</span>
           </div>

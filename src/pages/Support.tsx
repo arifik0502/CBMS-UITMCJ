@@ -127,7 +127,7 @@ export default function SupportPage() {
   return (
     <Shell>
       <Header back="/orders" />
-      <h1 className="font-display text-3xl font-extrabold tracking-tight">Report a problem</h1>
+      <h1 className="font-display text-4xl font-extrabold tracking-tight">Report a problem</h1>
       <p className="mt-1 text-sm text-muted">Something wrong with an order, or a question for the team? Tell us and we will follow up.</p>
 
       <form onSubmit={onSubmit} noValidate className="mt-4 space-y-5">
@@ -154,15 +154,15 @@ export default function SupportPage() {
           <div>
             <p className="mb-1.5 text-sm font-bold">Photo (optional)</p>
             {photo && previewUrl ? (
-              <div className="flex items-center gap-3 rounded-xl border-2 border-ink bg-white p-3">
-                <img src={previewUrl} alt="Selected photo" className="size-16 rounded-lg border-2 border-ink object-cover" />
+              <div className="flex items-center gap-3 rounded-xl border border-line bg-white p-3">
+                <img src={previewUrl} alt="Selected photo" className="size-16 rounded-lg border border-line object-cover" />
                 <p className="min-w-0 flex-1 truncate text-sm font-semibold">{photo.name}</p>
                 <button type="button" onClick={() => { setPhoto(null); uploaded.current = null; }}
                   className="min-h-10 rounded-lg px-3 text-sm font-bold text-ketchup underline underline-offset-2">Remove</button>
               </div>
             ) : (
               <label htmlFor="photo"
-                className="flex min-h-12 cursor-pointer items-center justify-center rounded-xl border-2 border-dashed border-ink px-4 py-3 text-sm font-bold has-[:focus-visible]:outline-3 has-[:focus-visible]:outline-ketchup">
+                className="flex min-h-12 cursor-pointer items-center justify-center rounded-xl border border-dashed border-muted px-4 py-3 text-sm font-bold has-[:focus-visible]:outline-3 has-[:focus-visible]:outline-ketchup">
                 Add a photo
                 <input id="photo" type="file" accept="image/jpeg,image/png,image/webp" className="sr-only" onChange={onPick} />
               </label>

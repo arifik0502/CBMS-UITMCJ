@@ -195,7 +195,7 @@ export default function OrderPage() {
   return (
     <Shell>
       <Header back="/" />
-      <h1 className="font-display text-3xl font-extrabold tracking-tight">Your cart</h1>
+      <h1 className="font-display text-4xl font-extrabold tracking-tight">Your cart</h1>
       <p className="mt-1 text-sm text-muted">Review your items, choose a delivery trip and complete checkout.</p>
 
       <form onSubmit={onSubmit} noValidate className="mt-4 space-y-5">
@@ -215,10 +215,10 @@ export default function OrderPage() {
                   const otherQty = totalQty - line.quantity;
                   const lineMax = Math.max(1, Math.min(product.available_stock, maxQty - otherQty));
                   return (
-                    <li key={product.id} className="rounded-xl border-2 border-ink bg-white p-4">
+                    <li key={product.id} className="rounded-xl border border-line bg-white p-4">
                       <div className="flex items-start justify-between gap-3">
                         <div className="flex min-w-0 items-start gap-3">
-                          {product.image_url && <img src={product.image_url} alt="" className="size-16 shrink-0 rounded-lg border-2 border-ink object-cover" />}
+                          {product.image_url && <img src={product.image_url} alt="" className="size-16 shrink-0 rounded-lg border border-line object-cover" />}
                           <div>
                             <p className="font-display text-lg font-extrabold">{product.name}</p>
                             <p className="text-sm text-muted">{formatRM(product.price_cents)} each · {product.available_stock} in stock</p>
@@ -234,11 +234,11 @@ export default function OrderPage() {
                         <div className="flex items-center gap-2" role="group" aria-label={product.name + " quantity"}>
                           <button type="button" aria-label={"Decrease " + product.name} disabled={line.quantity <= 1}
                             onClick={() => cart.setQuantity(product.id, line.quantity - 1, lineMax)}
-                            className="grid size-10 place-items-center rounded-full border-2 border-ink bg-paper text-xl font-bold disabled:opacity-40">−</button>
+                            className="grid size-11 place-items-center rounded-full border border-muted bg-paper text-xl font-bold disabled:opacity-40">−</button>
                           <output aria-live="polite" className="w-8 text-center font-display text-xl font-extrabold">{line.quantity}</output>
                           <button type="button" aria-label={"Increase " + product.name} disabled={line.quantity >= lineMax}
                             onClick={() => cart.setQuantity(product.id, line.quantity + 1, lineMax)}
-                            className="grid size-10 place-items-center rounded-full border-2 border-ink bg-paper text-xl font-bold disabled:opacity-40">+</button>
+                            className="grid size-11 place-items-center rounded-full border border-muted bg-paper text-xl font-bold disabled:opacity-40">+</button>
                         </div>
                       </div>
                       {line.quantity > product.available_stock && (
@@ -257,23 +257,23 @@ export default function OrderPage() {
               <div className="space-y-2 text-sm">
                 <div className="flex justify-between"><span>Subtotal</span><span className="font-semibold">{formatRM(total)}</span></div>
                 <div className="flex justify-between"><span>Delivery</span><span className="font-semibold">Included</span></div>
-                <div className="flex justify-between border-t-2 border-ink pt-3 text-base">
+                <div className="flex justify-between border-t border-line pt-3 text-base">
                   <span className="font-bold">Total</span><span className="font-display text-2xl font-extrabold">{formatRM(total)}</span>
                 </div>
               </div>
-              <a href="#checkout-details" className="inline-flex min-h-12 w-full items-center justify-center rounded-xl border-2 border-ink bg-ink px-5 py-3 text-base font-bold text-bun shadow-[3px_3px_0_0_var(--color-ketchup)]">
+              <a href="#checkout-details" className="action action-primary w-full">
                 Continue to checkout
               </a>
             </>
           ) : (
-            <div className="space-y-3 rounded-xl border-2 border-dashed border-ink p-4 text-center">
+            <div className="space-y-3 rounded-xl border border-dashed border-muted p-4 text-center">
               <p className="font-bold">Your cart is empty</p>
               <p className="text-sm text-muted">Choose products from the menu before checking out.</p>
               <LinkButton to="/" variant="secondary">Browse menu</LinkButton>
             </div>
           )}
           <button type="button" onClick={cancelCart}
-            className="min-h-11 w-full rounded-xl border-2 border-ketchup bg-paper px-4 py-2.5 text-sm font-bold text-ketchup">
+            className="min-h-11 w-full rounded-xl border border-ketchup bg-paper px-4 py-2.5 text-sm font-bold text-ketchup">
             Clear cart
           </button>
         </section>
@@ -338,7 +338,7 @@ export default function OrderPage() {
                 const closed = t.closed_reason !== null || ended;
                 return (
                   <label key={t.id}
-                    className={`flex min-h-14 items-start gap-3 rounded-xl border-2 border-ink p-3 ${closed ? "cursor-not-allowed bg-line/50 opacity-60" : "cursor-pointer"} ${values.tripId === t.id ? "bg-bun" : closed ? "" : "bg-white"} has-[:focus-visible]:outline-3 has-[:focus-visible]:outline-ketchup`}>
+                    className={`flex min-h-14 items-start gap-3 rounded-xl border border-muted p-3 ${closed ? "cursor-not-allowed bg-line/50 opacity-60" : "cursor-pointer"} ${values.tripId === t.id ? "bg-bun/30 ring-1 ring-ink" : closed ? "" : "bg-white"} has-[:focus-visible]:outline-3 has-[:focus-visible]:outline-ketchup`}>
                     <input type="radio" name="trip" value={t.id} disabled={closed} checked={values.tripId === t.id}
                       onChange={() => set("tripId", t.id)} className="mt-1 size-5 accent-ink" />
                     <span>
@@ -368,7 +368,7 @@ export default function OrderPage() {
                 { custom: true, title: "Add a kitchen note", body: "Use one note for the whole order, e.g. no sauce." }
               ] as const).map((o) => (
                 <label key={o.title}
-                  className={`flex min-h-14 cursor-pointer items-start gap-3 rounded-xl border-2 border-ink p-3 ${values.custom === o.custom ? "bg-bun" : "bg-white"} has-[:focus-visible]:outline-3 has-[:focus-visible]:outline-ketchup`}>
+                  className={`flex min-h-14 cursor-pointer items-start gap-3 rounded-xl border border-muted p-3 ${values.custom === o.custom ? "bg-bun/30 ring-1 ring-ink" : "bg-white"} has-[:focus-visible]:outline-3 has-[:focus-visible]:outline-ketchup`}>
                   <input type="radio" name="orderNoteType" checked={values.custom === o.custom}
                     onChange={() => set("custom", o.custom)} className="mt-1 size-5 accent-ink" />
                   <span>
@@ -399,7 +399,7 @@ export default function OrderPage() {
                 { id: "DUITNOW", title: "DuitNow QR", body: "Scan the QR on the next step and upload your receipt." }
               ] as const).map((o) => (
                 <label key={o.id}
-                  className={`flex min-h-14 cursor-pointer items-start gap-3 rounded-xl border-2 border-ink p-3 ${values.method === o.id ? "bg-bun" : "bg-white"} has-[:focus-visible]:outline-3 has-[:focus-visible]:outline-ketchup`}>
+                  className={`flex min-h-14 cursor-pointer items-start gap-3 rounded-xl border border-muted p-3 ${values.method === o.id ? "bg-bun/30 ring-1 ring-ink" : "bg-white"} has-[:focus-visible]:outline-3 has-[:focus-visible]:outline-ketchup`}>
                   <input type="radio" name="method" value={o.id} checked={values.method === o.id}
                     onChange={() => set("method", o.id)} className="mt-1 size-5 accent-ink" />
                   <span>

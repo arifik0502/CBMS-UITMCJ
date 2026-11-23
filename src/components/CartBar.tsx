@@ -10,7 +10,7 @@ export function CartBar({
       <button
         type="button"
         onClick={onOpen}
-        className="mx-auto flex min-h-14 w-full max-w-md items-center justify-between gap-3 rounded-2xl border-2 border-ink bg-ink px-5 py-3 text-left text-bun shadow-[4px_4px_0_0_var(--color-ketchup)] active:translate-y-0.5"
+        className="mx-auto flex min-h-14 w-full max-w-md items-center justify-between gap-3 rounded-full bg-ink px-5 py-3 text-left text-paper shadow-xl active:translate-y-0.5"
       >
         <span className="flex items-center gap-3">
           <span className="grid size-8 place-items-center rounded-full bg-bun text-sm font-extrabold text-ink" aria-hidden="true">{count}</span>
