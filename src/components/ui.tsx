@@ -25,7 +25,7 @@ function Banner() {
 
 export function Shell({ children, wide = false }: { children: ReactNode; wide?: boolean }) {
   return (
-    <div className={`mx-auto w-full ${wide ? "max-w-3xl" : "max-w-md"} px-4 pb-28 pt-[max(1rem,env(safe-area-inset-top))]`}>
+    <div className={`mx-auto w-full ${wide ? "max-w-6xl" : "max-w-xl"} px-4 sm:px-6 pb-28 pt-[max(1rem,env(safe-area-inset-top))]`}>
       <Banner />
       {children}
     </div>
@@ -35,13 +35,13 @@ export function Shell({ children, wide = false }: { children: ReactNode; wide?: 
 export function Header({ title, back }: { title?: string; back?: string }) {
   const { brand_name } = useSiteConfig();
   return (
-    <header className="flex items-center justify-between py-3">
-      <Link to="/" className="font-display text-xl font-extrabold tracking-tight">
+    <header className="masthead">
+      <Link to="/" className="wordmark">
         {brand_name || "Crispy Burger"}
       </Link>
       {back ? (
-        <Link to={back} className="min-h-11 rounded-full border-2 border-ink px-4 py-2 text-sm font-semibold">
-          Back
+        <Link to={back} className="nav-link">
+          <span aria-hidden="true">←</span> Back
         </Link>
       ) : title ? (
         <span className="text-sm font-semibold">{title}</span>
@@ -56,14 +56,8 @@ type BtnProps = ButtonHTMLAttributes<HTMLButtonElement> & {
 };
 
 export function Button({ variant = "primary", busy, className = "", children, disabled, ...rest }: BtnProps) {
-  const base =
-    "inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-xl border-2 border-ink px-5 py-3 text-base font-bold transition-transform active:translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-50";
-  const look =
-    variant === "primary"
-      ? "bg-ink text-bun shadow-[3px_3px_0_0_var(--color-ketchup)]"
-      : "bg-paper text-ink shadow-[3px_3px_0_0_var(--color-ink)]";
   return (
-    <button className={`${base} ${look} ${className}`} disabled={disabled || busy} {...rest}>
+    <button className={`action action-${variant} w-full ${className}`} disabled={disabled || busy} {...rest}>
       {busy && <Spinner />}
       {children}
     </button>
@@ -71,14 +65,10 @@ export function Button({ variant = "primary", busy, className = "", children, di
 }
 
 export function LinkButton({ to, children, variant = "primary" }: { to: string; children: ReactNode; variant?: "primary" | "secondary" }) {
-  const look =
-    variant === "primary"
-      ? "bg-ink text-bun shadow-[3px_3px_0_0_var(--color-ketchup)]"
-      : "bg-paper text-ink shadow-[3px_3px_0_0_var(--color-ink)]";
   return (
     <Link
       to={to}
-      className={`inline-flex min-h-12 w-full items-center justify-center rounded-xl border-2 border-ink px-5 py-3 text-base font-bold ${look}`}
+      className={`action action-${variant} w-full`}
     >
       {children}
     </Link>
@@ -115,7 +105,7 @@ export function Field({
 }
 
 export const inputClass =
-  "min-h-12 w-full rounded-xl border-2 border-ink bg-white px-3.5 py-2.5 text-base placeholder:text-muted/70 aria-[invalid=true]:border-ketchup disabled:opacity-50";
+  "min-h-12 w-full rounded-xl border border-muted bg-white px-3.5 py-2.5 text-base placeholder:text-muted/70 aria-[invalid=true]:border-ketchup disabled:opacity-50";
 
 export function Notice({ tone = "info", children }: { tone?: "info" | "error" | "success"; children: ReactNode }) {
   const tones = {
@@ -124,7 +114,7 @@ export function Notice({ tone = "info", children }: { tone?: "info" | "error" | 
     success: "bg-[#dff3df]"
   } as const;
   return (
-    <div role={tone === "error" ? "alert" : "status"} className={`rounded-xl border-2 border-ink px-4 py-3 text-sm font-semibold ${tones[tone]}`}>
+    <div role={tone === "error" ? "alert" : "status"} className={`rounded-xl border border-line border-l-4 border-l-current px-4 py-3 text-sm font-semibold ${tones[tone]}`}>
       {children}
     </div>
   );
@@ -154,13 +144,13 @@ export function ErrorScreen({ message, onRetry }: { message: string; onRetry?: (
 
 export function Pill({ tone, children }: { tone: "good" | "warn" | "bad" | "neutral"; children: ReactNode }) {
   const tones = {
-    good: "bg-pickle text-white",
-    warn: "bg-bun-deep text-ink",
-    bad: "bg-ketchup text-white",
-    neutral: "bg-paper text-ink"
+    good: "bg-pickle/15 text-ink",
+    warn: "bg-bun/40 text-ink",
+    bad: "bg-ketchup/15 text-ink",
+    neutral: "bg-line/60 text-ink"
   } as const;
   return (
-    <span className={`inline-flex items-center rounded-full border-2 border-ink px-3 py-1 text-sm font-bold ${tones[tone]}`}>
+    <span className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-bold ${tones[tone]}`}>
       {children}
     </span>
   );

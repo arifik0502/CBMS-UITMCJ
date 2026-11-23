@@ -163,10 +163,10 @@ export default function OrdersPage() {
   return (
     <Shell>
       <Header back="/" />
-      <h1 className="font-display text-3xl font-extrabold tracking-tight">My orders</h1>
+      <h1 className="font-display text-4xl font-extrabold tracking-tight">My orders</h1>
       <p className="mt-1 text-sm text-muted">Orders placed on this device. They are not tied to an account.</p>
 
-      <div role="tablist" aria-label="Order status" className="mt-4 grid grid-cols-3 gap-2">
+      <div role="tablist" aria-label="Order status" className="mt-6 grid grid-cols-3 rounded-2xl border border-line bg-paper p-1">
         {TABS.map((t) => (
           <button
             key={t.id}
@@ -175,7 +175,7 @@ export default function OrdersPage() {
             aria-selected={tab === t.id}
             aria-controls="orders-panel"
             onClick={() => setTab(t.id)}
-            className={`min-h-12 rounded-xl border-2 border-ink px-2 py-2 text-sm font-bold ${tab === t.id ? "bg-ink text-bun" : "bg-paper"}`}
+            className={`min-h-12 rounded-xl px-1 py-2 text-sm font-bold ${tab === t.id ? "bg-ink text-paper" : "bg-paper"}`}
           >
             {t.label}
             <span className="ml-1 opacity-70">({counts[t.id]})</span>
@@ -191,7 +191,7 @@ export default function OrdersPage() {
         {shown.length === 0 && !loading && (
           <div className="ticket space-y-3 p-5 text-center">
             <p className="text-sm font-semibold">{EMPTY_TEXT[tab]}</p>
-            <Link to="/" className="inline-flex min-h-11 items-center rounded-full border-2 border-ink bg-bun px-5 py-2 text-sm font-bold">
+            <Link to="/" className="action action-primary">
               Browse the menu
             </Link>
           </div>
@@ -244,7 +244,7 @@ export default function OrdersPage() {
               )}
 
               {!unavailable && ticketsForOrder(tickets, o.token).map((t) => (
-                <p key={t.token} className="mt-3 flex items-center justify-between gap-2 rounded-lg border-2 border-ink bg-white px-3 py-2 text-sm">
+                <p key={t.token} className="mt-3 flex items-center justify-between gap-2 rounded-lg border border-line bg-white px-3 py-2 text-sm">
                   <span className="font-semibold">Ticket {t.ticketNo}</span>
                   <Pill tone={t.status === "RESOLVED" ? "good" : "warn"}>{t.status === "RESOLVED" ? "Resolved" : "Open"}</Pill>
                 </p>
@@ -253,25 +253,25 @@ export default function OrdersPage() {
               <div className="mt-4 grid grid-cols-2 gap-2">
                 {!unavailable && (
                   <Link to={`/track/${o.token}`}
-                    className="inline-flex min-h-11 items-center justify-center rounded-xl border-2 border-ink bg-paper px-3 py-2 text-sm font-bold shadow-[2px_2px_0_0_var(--color-ink)]">
+                    className="action action-secondary text-sm">
                     Track order
                   </Link>
                 )}
                 {!unavailable && needsPayment && (
                   <Link to={`/pay/${o.token}`}
-                    className="inline-flex min-h-11 items-center justify-center rounded-xl border-2 border-ink bg-ink px-3 py-2 text-sm font-bold text-bun shadow-[2px_2px_0_0_var(--color-ketchup)]">
+                    className="action action-primary text-sm">
                     Pay now
                   </Link>
                 )}
                 {!unavailable && terminal && (
                   <button type="button" onClick={() => reorder(o)} disabled={!o.items || o.items.length === 0}
-                    className="min-h-11 rounded-xl border-2 border-ink bg-ink px-3 py-2 text-sm font-bold text-bun shadow-[2px_2px_0_0_var(--color-ketchup)] disabled:opacity-50">
+                    className="action action-primary text-sm">
                     Reorder
                   </button>
                 )}
                 {(terminal || unavailable) && (
                   <button type="button" onClick={() => remove(o)}
-                    className="min-h-11 rounded-xl border-2 border-ketchup bg-paper px-3 py-2 text-sm font-bold text-ketchup">
+                    className="min-h-11 rounded-xl border border-ketchup bg-paper px-3 py-2 text-sm font-bold text-ketchup">
                     Remove
                   </button>
                 )}

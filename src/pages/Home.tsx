@@ -56,21 +56,25 @@ export default function Home() {
   const { canOrder, message: closedMessage } = getOrderability(data, cachedOnly, clock);
   const cartTotal = subtotalCents(cart.lines, (id) => products.find((p) => p.id === id)?.price_cents);
 
+  const firstMenu = site.sections.find((section) => section.visible && section.type === "menu");
+
   const renderHero = (s: SiteSection) => (
-    <section key={s.id} className="pt-4 text-center">
-      <h1 className="font-display text-[2.6rem] font-extrabold leading-[1.02] tracking-tight">{s.headline}</h1>
-      <div className="relative mx-auto mt-6 max-w-xs">
-        {s.image_url
-          ? <img src={s.image_url} alt="" width={400} height={360} className="mx-auto max-h-80 w-full rounded-2xl border-2 border-ink object-cover" />
-          : <img src="/burger.svg" alt="Crispy chicken burger" width={400} height={360} className="burger-drop w-full" />}
+    <section key={s.id} className="storefront-hero">
+      <div className="hero-copy">
+        <h1>{s.headline}</h1>
+        {firstMenu && <a href={`#menu-${firstMenu.id}`} className="action action-primary">
+          Browse menu <span aria-hidden="true">↓</span>
+        </a>}
       </div>
+      <img src={s.image_url || "/crispy-chicken.webp"} alt="" width={800} height={600}
+        fetchPriority="high" className="hero-image" />
     </section>
   );
 
   const renderMenu = (s: SiteSection) => (
-    <section key={s.id} className="mt-6 space-y-3" aria-labelledby="menu-title">
-      <div className="flex items-center justify-between gap-3">
-        <h2 id="menu-title" className="font-display text-2xl font-extrabold">{s.title || "Menu"}</h2>
+    <section key={s.id} className="mt-9 space-y-4" aria-labelledby={`menu-${s.id}`}>
+      <div className="menu-heading">
+        <h2 id={`menu-${s.id}`} className="scroll-mt-4 font-display text-4xl font-extrabold tracking-tight">{s.title || "Menu"}</h2>
         {cachedOnly ? (
           <Pill tone="warn">Saved menu · read-only</Pill>
         ) : !data.accepting_orders ? (
@@ -86,7 +90,7 @@ export default function Home() {
         <p className="rounded-xl border-2 border-dashed border-ink p-4 text-center text-sm font-semibold">The menu is empty right now.</p>
       )}
 
-      <ul className="space-y-3">
+      <ul className="menu-grid">
         {products.map((p) => {
           const qty = cart.quantityOf(p.id);
           const productMax = Math.max(0, Math.min(maxQty, p.available_stock));
@@ -95,18 +99,18 @@ export default function Home() {
           const lowStock = p.available_stock > 0 && p.available_stock <= 10;
           const canAdd = canOrder && !itemSoldOut && cart.count < maxQty;
           return (
-            <li key={p.id} className="ticket overflow-hidden">
+            <li key={p.id} className="ticket menu-card">
               {p.image_url && (
                 <img
                   src={p.image_url}
                   alt={p.name}
                   loading="lazy"
-                  className="h-48 w-full border-b-2 border-ink object-cover"
+                  className="menu-photo"
                 />
               )}
-              <div className="p-4">
+              <div className="flex flex-1 flex-col p-5 sm:p-6">
                 <div className="flex items-start justify-between gap-3">
-                  <div>
+                  <div className="min-w-0 break-words">
                     <h3 className="font-display text-xl font-extrabold">{p.name}</h3>
                     {p.description && <p className="mt-1 text-sm text-muted">{p.description}</p>}
                     <div className="mt-2">
@@ -115,17 +119,17 @@ export default function Home() {
                           : <Pill tone="good">In stock</Pill>}
                     </div>
                   </div>
-                  <span className="shrink-0 rounded-full border-2 border-ink bg-ketchup px-3 py-1 font-display text-lg font-extrabold text-white">
+                  <span className="shrink-0 font-display text-xl font-extrabold tabular-nums text-ketchup">
                     {formatRM(p.price_cents)}
                   </span>
                 </div>
-                <div className="mt-4">
+                <div className="mt-auto pt-5">
                   {qty > 0 ? (
-                    <div className="flex items-center justify-between gap-3">
+                    <div className="flex flex-wrap items-center justify-between gap-3">
                       <Stepper value={qty} min={0} max={Math.max(1, lineMax)} label={`${p.name} quantity`}
                         onChange={(q) => cart.setQuantity(p.id, q, Math.max(1, lineMax))} />
                       <button type="button" onClick={cart.openDrawer}
-                        className="min-h-11 rounded-full border-2 border-ink bg-paper px-4 py-2 text-sm font-bold">View cart</button>
+                        className="nav-link">View cart</button>
                     </div>
                   ) : (
                     <Button disabled={!canAdd} onClick={() => cart.add(p.id, Math.max(1, lineMax))}>
@@ -151,8 +155,8 @@ export default function Home() {
       return (
         <div key={s.id}>
           {s.title && <h3 className="px-5 pt-5 font-display text-lg font-extrabold">{s.title}</h3>}
-          <ol className="space-y-3 p-5 text-sm font-medium">
-            {items.map((t, i) => <li key={i}><strong>{i + 1}.</strong> {t}</li>)}
+          <ol className="delivery-steps space-y-2 p-5 text-sm font-medium">
+            {items.map((t, i) => <li key={i}>{t}</li>)}
           </ol>
         </div>
       );
@@ -207,7 +211,7 @@ export default function Home() {
       if (!s.label || !s.to) return null;
       return (
         <div key={s.id} className="mt-6">
-          <SmartLink to={s.to} className="inline-flex min-h-12 w-full items-center justify-center rounded-xl border-2 border-ink bg-paper px-5 py-3 text-base font-bold text-ink shadow-[3px_3px_0_0_var(--color-ink)]">
+          <SmartLink to={s.to} className="action action-secondary w-full">
             {s.label}
           </SmartLink>
         </div>
@@ -245,11 +249,11 @@ export default function Home() {
   }
 
   return (
-    <Shell>
-      <header className="flex items-center justify-between gap-2 py-3">
-        <span className="font-display text-xl font-extrabold tracking-tight">{site.brand_name || data.business_name}</span>
+    <Shell wide>
+      <header className="masthead">
+        <span className="wordmark">{site.brand_name || data.business_name}</span>
         <div className="flex items-center gap-2">
-          <Link to="/orders" className="relative min-h-11 rounded-full border-2 border-ink bg-paper px-4 py-2 text-sm font-bold">
+          <Link to="/orders" className="nav-link relative">
             My orders
             {activeOrders > 0 && (
               <span className="absolute -right-1.5 -top-1.5 grid size-5 place-items-center rounded-full bg-ketchup text-[0.7rem] font-extrabold text-white"
@@ -259,7 +263,7 @@ export default function Home() {
         </div>
       </header>
 
-      {blocks}
+      <main>{blocks}</main>
 
       {site.footer_note && <p className="mt-6 text-center text-sm text-muted">{site.footer_note}</p>}
 

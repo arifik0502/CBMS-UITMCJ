@@ -9,7 +9,7 @@ export default defineConfig({
     tailwindcss(),
     VitePWA({
       registerType: "autoUpdate",
-      includeAssets: ["burger.svg", "duitnow-qr.svg", "icon.svg"],
+      includeAssets: ["crispy-chicken.webp", "burger.svg", "duitnow-qr.svg", "icon.svg"],
       manifest: {
         name: "Crispy Burger",
         short_name: "Crispy Burger",
