@@ -23,7 +23,7 @@ object ErrorMessages {
                 "The Supabase database schema is behind this app. Check that all required migrations have been applied."
 
             message.contains("forbidden") || message.contains("42501") ->
-                "Your developer account is not authorized to perform this action. Confirm that its OWNER profile is active and that the latest database migration has been applied."
+                "Your admin account is not authorized to perform this action. Check your role and confirm the latest database migration has been applied."
 
             message.contains("invalid_payment_state") ->
                 "This order is no longer awaiting cash collection. Refresh the order and check its payment status."
@@ -40,6 +40,33 @@ object ErrorMessages {
             message.contains("not_out_for_delivery") ->
                 "The live collect_cash function still has the old delivery restriction. Apply the latest cash-payment migration in Supabase, then retry."
 
+            message.contains("sku_exists") ->
+                "That SKU is already used by another product. Choose a different short code."
+
+            message.contains("invalid_sku") ->
+                "Use 2-20 letters, numbers, hyphens or underscores for the SKU."
+
+            message.contains("invalid_product_name") ->
+                "Product name must be 2-80 characters."
+
+            message.contains("invalid_product_price") ->
+                "Enter a valid product price."
+
+            message.contains("invalid_product_image") ->
+                "That product photo is not valid. Choose the photo again from your phone."
+
+            message.contains("trip_no_exists") ->
+                "That trip number is already used. Choose a different number."
+
+            message.contains("invalid_trip_time") ->
+                "Trip end time must be later than its start time."
+
+            message.contains("building_code_exists") ->
+                "That building code is already used."
+
+            message.contains("invalid_floors") || message.contains("duplicate_floors") ->
+                "Check the floor list. Use valid floor numbers without duplicates."
+
             message.contains("ticket_not_found") ->
                 "This ticket could not be found. Refresh the list."
 
@@ -52,8 +79,32 @@ object ErrorMessages {
             message.contains("order_not_found") ->
                 "This order could not be found. Refresh the order list."
 
+            message.contains("pgrst202") || message.contains("could not find the function") ->
+                "The website customization migration has not been applied in Supabase yet."
+
+            message.contains("menu_required") ->
+                "The menu must stay on the page so customers can order."
+
+            message.contains("invalid_color") || message.contains("invalid_font") ->
+                "One of the colours or the lettering is not valid."
+
+            message.contains("invalid_link") ->
+                "A link is not valid. Use a page from the list or a full https:// address."
+
+            message.contains("invalid_image") ->
+                "A picture is not valid. Choose it again from your phone."
+
+            message.contains("too_many_custom") || message.contains("too_many_sections") ->
+                "There are too many extra boxes on the page. Remove some."
+
+            message.contains("no_draft") ->
+                "There are no changes to publish."
+
+            message.contains("version_not_found") ->
+                "That earlier version could not be found."
+
             message.contains("permission denied") ->
-                "Supabase denied this operation. Verify the active developer OWNER account and database permissions."
+                "Supabase denied this operation. Verify your active admin profile and database permissions."
 
             else -> fallback
         }

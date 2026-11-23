@@ -27,13 +27,24 @@ export interface Trip {
   closed_reason: "TEAM" | "CUTOFF" | "ENDED" | null;
 }
 
+export interface StorefrontProduct {
+  id: string;
+  name: string;
+  description: string;
+  price_cents: number;
+  image_url: string | null;
+  available_stock: number;
+}
+
 export interface Storefront {
   business_name: string;
   accepting_orders: boolean;
   max_qty_per_order: number;
   payment_expiry_minutes: number;
   duitnow_account_name: string;
-  product: { id: string; name: string; description: string; price_cents: number } | null;
+  products: StorefrontProduct[];
+  /** Legacy first product fields kept while older deployments transition. */
+  product: StorefrontProduct | null;
   available_stock: number;
   buildings: Building[];
   trips: Trip[];

@@ -34,7 +34,7 @@ export function validateOrder(v: OrderFormValues, maxQty: number): FormErrors {
   if (!v.buildingId) e.buildingId = "Choose your building.";
   if (!v.floor) e.floor = "Choose your floor.";
   if (!ROOM_RE.test(normalizeRoom(v.room))) e.room = "Enter your room number, e.g. 205 (letters and numbers only).";
-  if (!Number.isInteger(v.quantity) || v.quantity < 1 || v.quantity > maxQty) e.quantity = `Choose 1 to ${maxQty} burgers.`;
+  if (!Number.isInteger(v.quantity) || v.quantity < 1 || v.quantity > maxQty) e.quantity = `Choose 1 to ${maxQty} items.`;
   if (!v.method) e.method = "Choose how you will pay.";
   if (!v.tripId) e.tripId = "Choose a delivery trip.";
   if (v.custom) {

@@ -48,9 +48,29 @@ class FakeAdminApi : AdminApi {
     override suspend fun updateOrderStatus(orderId: String, status: String) = act("status:$orderId:$status")
 
     override suspend fun loadProducts(): List<AdminProduct> = emptyList()
-    override suspend fun updateProductDetails(
-        productId: String, sku: String, name: String, description: String, priceCents: Int
+    override suspend fun createProduct(
+        sku: String, name: String, description: String, priceCents: Int, imageUrl: String?, initialStock: Int
     ) = Unit
+    override suspend fun updateProductDetails(
+        productId: String,
+        sku: String,
+        name: String,
+        description: String,
+        priceCents: Int,
+        imageUrl: String?,
+        isActive: Boolean
+    ) = Unit
+    override suspend fun uploadProductImage(jpeg: ByteArray): String =
+        "https://example.test/product-images/1700000000000-abcdef12.jpg"
+
+    override suspend fun loadDeliverySettings() = com.crispyburger.admin.data.AdminDeliverySettings()
+    override suspend fun saveDeliveryTrip(
+        id: String?, tripNo: Int, label: String, startTime: String, endTime: String, isOpen: Boolean
+    ) = Unit
+    override suspend fun saveBuilding(
+        id: String?, code: String, name: String, floors: List<Int>, sortOrder: Int, isActive: Boolean
+    ) = Unit
+    override suspend fun saveOrderControls(acceptingOrders: Boolean, maxQtyPerOrder: Int) = Unit
 
     override suspend fun loadInventory(): List<AdminInventoryItem> = emptyList()
     override suspend fun adjustInventory(productId: String, type: String, quantity: Int, reason: String) = Unit
@@ -75,6 +95,16 @@ class FakeAdminApi : AdminApi {
         throw UnsupportedOperationException()
 
     override suspend fun loadAllDeliveredOrders(from: LocalDate, to: LocalDate): List<AdminSalesOrder> = emptyList()
+
+    var siteState = com.crispyburger.admin.data.SiteState()
+    val siteCalls = mutableListOf<String>()
+    override suspend fun loadSiteState() = siteState
+    override suspend fun saveSiteDraft(config: com.crispyburger.admin.data.SiteConfig) { siteCalls += "save" }
+    override suspend fun publishSite() { siteCalls += "publish" }
+    override suspend fun discardSiteDraft() { siteCalls += "discard" }
+    override suspend fun loadSiteHistory(): List<com.crispyburger.admin.data.SiteVersion> = emptyList()
+    override suspend fun restoreSiteVersion(id: String) { siteCalls += "restore:$id" }
+    override suspend fun uploadSiteImage(jpeg: ByteArray): String = "https://example.test/site-assets/1700000000000-abcdef12.jpg"
 
     override fun friendlyError(error: Throwable, fallback: String): String = ErrorMessages.map(error, fallback)
 }

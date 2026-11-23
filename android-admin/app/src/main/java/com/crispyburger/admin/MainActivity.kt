@@ -260,7 +260,7 @@ private fun LoadingScreen() {
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             CircularProgressIndicator()
-            Text("Checking developer access...")
+            Text("Checking admin access...")
         }
     }
 }
@@ -276,12 +276,12 @@ internal fun friendlySignInError(error: Exception): String {
     val message = ErrorMessages.describe(error)
     return when {
         message.contains("invalid login", ignoreCase = true) ->
-            "The developer email or password is incorrect."
+            "The admin email or password is incorrect."
         message.contains("email not confirmed", ignoreCase = true) ->
-            "Confirm the developer email in Supabase Auth before signing in."
+            "Confirm the admin email in Supabase Auth before signing in."
         else -> ErrorMessages.map(
             message,
-            "Sign-in failed. Confirm the developer-only migration has been applied and check your internet connection."
+            "Sign-in failed. Confirm this account has an active OWNER or ADMIN profile and check your internet connection."
         )
     }
 }

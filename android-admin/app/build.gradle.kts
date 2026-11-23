@@ -36,12 +36,14 @@ android {
         applicationId = "com.crispyburger.admin"
         minSdk = 26
         targetSdk = 35
-        versionCode = 15
-        versionName = "0.5.1"
+        versionCode = 16
+        versionName = "0.6.0"
         buildConfigField("String", "SUPABASE_URL", quoted(localProp("supabase.url")))
         buildConfigField("String", "SUPABASE_ANON_KEY", quoted(localProp("supabase.anonKey")))
-        // Optional client-side allow-list. The server (OWNER role + RLS) is still the real gate.
+        // Optional sign-in email prefill. Supabase profile roles remain the real gate.
         buildConfigField("String", "DEVELOPER_EMAIL", quoted(localProp("developer.email")))
+        // Public customer website address, used by the Website tab's live preview.
+        buildConfigField("String", "SITE_URL", quoted(localProp("site.url")))
     }
 
     signingConfigs {

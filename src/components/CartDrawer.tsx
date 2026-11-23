@@ -10,9 +10,11 @@ export interface DrawerProduct {
   id: string;
   name: string;
   price_cents: number;
+  available_stock: number;
+  image_url?: string | null;
 }
 
-/** Bottom-sheet cart. `canCheckout` is false when ordering is closed or the menu is read-only. */
+/** Bottom-sheet cart. maxQty is the maximum total quantity allowed per order. */
 export function CartDrawer({
   products, maxQty, canCheckout, notice
 }: { products: DrawerProduct[]; maxQty: number; canCheckout: boolean; notice?: string }) {
@@ -39,10 +41,17 @@ export function CartDrawer({
   if (!open) return null;
 
   const priceOf = (id: string) => products.find((p) => p.id === id)?.price_cents;
-  // Lines for products that no longer exist on the menu are shown as unavailable and excluded from the total.
   const lines = cart.lines;
   const total = subtotalCents(lines, priceOf);
-  const orderable = lines.filter((l) => priceOf(l.productId) !== undefined);
+  const totalQty = cart.count;
+  const knownLines = lines.filter((l) => products.some((p) => p.id === l.productId));
+  const missingProduct = knownLines.length !== lines.length;
+  const stockProblem = knownLines.some((l) => {
+    const p = products.find((x) => x.id === l.productId);
+    return !p || p.available_stock < l.quantity;
+  });
+  const tooMany = totalQty > maxQty;
+  const checkoutReady = canCheckout && knownLines.length > 0 && !missingProduct && !stockProblem && !tooMany;
 
   return (
     <div className="fixed inset-0 z-40 flex items-end justify-center" role="presentation">
@@ -56,7 +65,10 @@ export function CartDrawer({
         className="relative max-h-[85vh] w-full max-w-md overflow-y-auto rounded-t-3xl border-2 border-b-0 border-ink bg-paper p-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] outline-none"
       >
         <div className="flex items-center justify-between gap-3">
-          <h2 id="cart-title" className="font-display text-2xl font-extrabold">Your cart</h2>
+          <div>
+            <h2 id="cart-title" className="font-display text-2xl font-extrabold">Your cart</h2>
+            <p className="text-xs text-muted">{totalQty}/{maxQty} items allowed</p>
+          </div>
           <button type="button" onClick={cart.closeDrawer}
             className="min-h-11 rounded-full border-2 border-ink px-4 py-2 text-sm font-semibold">Close</button>
         </div>
@@ -70,22 +82,30 @@ export function CartDrawer({
           <ul className="mt-4 space-y-3">
             {lines.map((l) => {
               const p = products.find((x) => x.id === l.productId);
+              const otherQty = totalQty - l.quantity;
+              const lineMax = p ? Math.max(1, Math.min(p.available_stock, maxQty - otherQty)) : 1;
               return (
                 <li key={l.productId} className="rounded-xl border-2 border-ink bg-white p-4">
                   <div className="flex items-start justify-between gap-3">
-                    <div>
-                      <p className="font-display text-lg font-extrabold">{p?.name ?? "Item no longer available"}</p>
-                      {p && <p className="text-sm text-muted">{formatRM(p.price_cents)} each</p>}
+                    <div className="flex min-w-0 items-start gap-3">
+                      {p?.image_url && <img src={p.image_url} alt="" className="size-16 shrink-0 rounded-lg border-2 border-ink object-cover" />}
+                      <div>
+                        <p className="font-display text-lg font-extrabold">{p?.name ?? "Item no longer available"}</p>
+                        {p && <p className="text-sm text-muted">{formatRM(p.price_cents)} each · {p.available_stock} in stock</p>}
+                      </div>
                     </div>
                     <button type="button" onClick={() => cart.remove(l.productId)}
-                      className="min-h-10 rounded-lg px-3 text-sm font-bold text-ketchup underline underline-offset-2">Remove</button>
+                      className="min-h-10 shrink-0 rounded-lg px-2 text-sm font-bold text-ketchup underline underline-offset-2">Remove</button>
                   </div>
                   {p && (
                     <div className="mt-3 flex items-center justify-between gap-3">
-                      <Stepper value={l.quantity} min={1} max={maxQty} label="quantity"
-                        onChange={(q) => cart.setQuantity(l.productId, q, maxQty)} />
+                      <Stepper value={l.quantity} min={1} max={lineMax} label={p.name + " quantity"}
+                        onChange={(q) => cart.setQuantity(l.productId, q, lineMax)} />
                       <span className="font-bold">{formatRM(p.price_cents * l.quantity)}</span>
                     </div>
+                  )}
+                  {p && l.quantity > p.available_stock && (
+                    <p className="mt-2 text-sm font-semibold text-ketchup">Only {p.available_stock} currently available.</p>
                   )}
                 </li>
               );
@@ -99,9 +119,12 @@ export function CartDrawer({
               <span className="font-bold">Total</span>
               <span className="font-display text-2xl font-extrabold">{formatRM(total)}</span>
             </div>
+            {tooMany && <p className="text-sm font-semibold text-ketchup">Remove {totalQty - maxQty} item{totalQty - maxQty === 1 ? "" : "s"} to continue.</p>}
+            {stockProblem && <p className="text-sm font-semibold text-ketchup">One or more items exceed current stock. Reduce the quantity to continue.</p>}
+            {missingProduct && <p className="text-sm font-semibold text-ketchup">Remove unavailable items before checkout.</p>}
             {notice && <p className="text-sm font-semibold text-ketchup">{notice}</p>}
             <Button
-              disabled={!canCheckout || orderable.length === 0}
+              disabled={!checkoutReady}
               onClick={() => { cart.closeDrawer(); navigate("/order"); }}
             >
               Checkout · {formatRM(total)}

@@ -51,10 +51,11 @@ import kotlinx.coroutines.withContext
 
 private enum class DashboardTab(val label: String, val glyph: String) {
     ORDERS("Orders", "🧾"),
-    MENU("Menu", "🍔"),
+    MENU("Products", "🍔"),
     STOCK("Stock", "📦"),
     TICKETS("Tickets", "🎫"),
-    REPORTS("Reports", "📊")
+    REPORTS("Reports", "📊"),
+    SITE("Website", "🎨")
 }
 
 @Composable
@@ -74,8 +75,14 @@ fun AdminDashboardScreen(
     val inventoryVm: InventoryViewModel = viewModel()
     val reportVm: ReportViewModel = viewModel()
     val ticketsVm: TicketsViewModel = viewModel()
+    val siteVm: SiteViewModel = viewModel()
+    val deliveryVm: DeliverySettingsViewModel = viewModel()
     val ticketsState by ticketsVm.state.collectAsStateWithLifecycle()
 
+    val availableTabs = remember(profile.role) {
+        if (profile.role == "OWNER") DashboardTab.entries
+        else listOf(DashboardTab.MENU, DashboardTab.SITE)
+    }
     var tabIndex by rememberSaveable { mutableIntStateOf(0) }
     var realtimeStatus by remember { mutableStateOf("Connecting") }
     val notificationPermissionLauncher = rememberLauncherForActivityResult(
@@ -113,12 +120,17 @@ fun AdminDashboardScreen(
         }
     }
 
-    LaunchedEffect(Unit) { ticketsVm.ensureLoaded() }
+    LaunchedEffect(profile.role) {
+        if (profile.role == "OWNER") ticketsVm.ensureLoaded()
+    }
 
     LaunchedEffect(openTab) {
         if (openTab == AdminNotificationHelper.TAB_TICKETS) {
-            tabIndex = DashboardTab.TICKETS.ordinal
-            ticketsVm.refresh(silent = true)
+            val ticketIndex = availableTabs.indexOf(DashboardTab.TICKETS)
+            if (ticketIndex >= 0) {
+                tabIndex = ticketIndex
+                ticketsVm.refresh(silent = true)
+            }
             onTabOpenHandled()
         }
     }
@@ -126,13 +138,16 @@ fun AdminDashboardScreen(
     // A tapped notification jumps straight to that order.
     LaunchedEffect(openOrderId) {
         if (openOrderId != null) {
-            tabIndex = DashboardTab.ORDERS.ordinal
-            ordersVm.requestOpen(openOrderId)
+            val orderIndex = availableTabs.indexOf(DashboardTab.ORDERS)
+            if (orderIndex >= 0) {
+                tabIndex = orderIndex
+                ordersVm.requestOpen(openOrderId)
+            }
             onOrderOpenHandled()
         }
     }
 
-    val tab = DashboardTab.entries[tabIndex.coerceIn(0, DashboardTab.entries.lastIndex)]
+    val tab = availableTabs[tabIndex.coerceIn(0, availableTabs.lastIndex)]
 
     Scaffold(
         topBar = {
@@ -147,7 +162,7 @@ fun AdminDashboardScreen(
                     Column {
                         Text("CBMS ADMIN", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
                         Text(
-                            "Welcome, ${profile.fullName.ifBlank { "Developer" }} · Live: $realtimeStatus",
+                            "Welcome, ${profile.fullName.ifBlank { "Admin" }} · Live: $realtimeStatus",
                             style = MaterialTheme.typography.labelMedium,
                             color = if (realtimeStatus == "Connected") {
                                 MaterialTheme.colorScheme.primary
@@ -162,6 +177,8 @@ fun AdminDashboardScreen(
                         inventoryVm.reset()
                         reportVm.reset()
                         ticketsVm.reset()
+                        siteVm.reset()
+                        deliveryVm.reset()
                         onSignOut()
                     }) { Text("Sign out") }
                 }
@@ -170,7 +187,7 @@ fun AdminDashboardScreen(
         },
         bottomBar = {
             NavigationBar {
-                DashboardTab.entries.forEachIndexed { index, item ->
+                availableTabs.forEachIndexed { index, item ->
                     NavigationBarItem(
                         selected = index == tabIndex,
                         onClick = { tabIndex = index },
@@ -195,6 +212,7 @@ fun AdminDashboardScreen(
                 }
                 DashboardTab.STOCK -> InventoryScreen(inventoryVm)
                 DashboardTab.TICKETS -> TicketsScreen(ticketsVm)
+                DashboardTab.SITE -> WebsiteToolsScreen(siteVm, deliveryVm)
                 DashboardTab.REPORTS -> Column(Modifier.fillMaxSize()) {
                     Box(Modifier.weight(1f)) { ReportScreen(reportVm) }
                     HorizontalDivider()

@@ -42,14 +42,27 @@ data class AdminDeliveryTrip(
     @SerialName("trip_no") val tripNo: Int,
     val label: String,
     @SerialName("start_time") val startTime: String,
-    @SerialName("end_time") val endTime: String
+    @SerialName("end_time") val endTime: String,
+    @SerialName("cutoff_minutes") val cutoffMinutes: Int = 0,
+    @SerialName("is_open") val isOpen: Boolean = true
 )
 
 @Serializable
 data class AdminBuilding(
     val id: String,
     val code: String,
-    val name: String
+    val name: String,
+    @SerialName("sort_order") val sortOrder: Int = 0,
+    @SerialName("is_active") val isActive: Boolean = true,
+    val floors: List<Int> = emptyList()
+)
+
+@Serializable
+data class AdminDeliverySettings(
+    @SerialName("accepting_orders") val acceptingOrders: Boolean = true,
+    @SerialName("max_qty_per_order") val maxQtyPerOrder: Int = 10,
+    val trips: List<AdminDeliveryTrip> = emptyList(),
+    val buildings: List<AdminBuilding> = emptyList()
 )
 
 @Serializable
@@ -98,6 +111,7 @@ data class AdminProduct(
     val name: String,
     val description: String = "",
     @SerialName("price_cents") val priceCents: Int,
+    @SerialName("image_url") val imageUrl: String? = null,
     @SerialName("is_active") val isActive: Boolean = true
 )
 

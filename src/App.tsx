@@ -2,6 +2,7 @@ import { lazy, Suspense } from "react";
 import { Route, Routes } from "react-router-dom";
 import { isConfigured } from "./lib/supabase";
 import { CartProvider } from "./lib/cart";
+import { SiteConfigProvider } from "./lib/SiteConfigContext";
 import { Header, LinkButton, LoadingScreen, Shell } from "./components/ui";
 import Home from "./pages/Home";
 const OrderPage = lazy(() => import("./pages/Order"));
@@ -41,6 +42,7 @@ function SetupNeeded() {
 export default function App() {
   if (!isConfigured) return <SetupNeeded />;
   return (
+    <SiteConfigProvider>
     <CartProvider>
       <Suspense fallback={<Shell><LoadingScreen /></Shell>}>
         <Routes>
@@ -54,6 +56,7 @@ export default function App() {
         </Routes>
       </Suspense>
     </CartProvider>
+    </SiteConfigProvider>
   );
 }
 

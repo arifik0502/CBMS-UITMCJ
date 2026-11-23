@@ -11,16 +11,17 @@ export const getStorefront = () => rpc<Storefront>("get_storefront");
 
 export const createOrder = (a: {
   name: string; phone: string; buildingId: string; floor: number; room: string;
-  quantity: number; method: PaymentMethod; idempotencyKey: string;
+  items: { productId: string; quantity: number }[];
+  method: PaymentMethod; idempotencyKey: string;
   tripId: string; note: string | null;
 }) =>
-  rpc<OrderTicket>("create_order", {
+  rpc<OrderTicket>("create_order_cart", {
     p_customer_name: a.name,
     p_phone: a.phone,
     p_building_id: a.buildingId,
     p_floor_number: a.floor,
     p_room_number: a.room,
-    p_quantity: a.quantity,
+    p_items: a.items.map((i) => ({ product_id: i.productId, quantity: i.quantity })),
     p_payment_method: a.method,
     p_idempotency_key: a.idempotencyKey,
     p_trip_id: a.tripId,

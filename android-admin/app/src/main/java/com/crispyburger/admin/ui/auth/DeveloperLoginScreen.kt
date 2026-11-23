@@ -67,7 +67,7 @@ fun DeveloperLoginScreen(
         )
         Spacer(modifier = Modifier.height(8.dp))
         Text(
-            text = "Developer access only",
+            text = "Admin access",
             style = MaterialTheme.typography.titleMedium,
             color = MaterialTheme.colorScheme.secondary
         )
@@ -88,7 +88,7 @@ fun DeveloperLoginScreen(
                     modifier = Modifier
                         .fillMaxWidth()
                         .semantics { contentType = ContentType.EmailAddress },
-                    label = { Text("Developer email") },
+                    label = { Text("Admin email") },
                     singleLine = true,
                     enabled = isConfigured && !isLoading,
                     keyboardOptions = KeyboardOptions(
@@ -143,7 +143,7 @@ fun DeveloperLoginScreen(
                 }
 
                 Text(
-                    "Account creation is disabled in the app. Only the approved developer account can access admin features.",
+                    "Account creation is disabled in the app. Only approved active admin accounts can sign in.",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )

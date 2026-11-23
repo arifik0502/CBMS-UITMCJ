@@ -1,8 +1,10 @@
-import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
+import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button, ErrorScreen, Field, Header, inputClass, LinkButton, LoadingScreen, Notice, Shell } from "../components/ui";
 import { createOrder } from "../lib/api";
+import { storefrontProducts } from "../lib/availability";
 import { useCart } from "../lib/cart";
+import { subtotalCents } from "../lib/cartLogic";
 import { friendlyError } from "../lib/errors";
 import { formatRM, roomLabel } from "../lib/format";
 import { rememberOrder } from "../lib/orderHistory";
@@ -36,7 +38,6 @@ export default function OrderPage() {
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [clock, setClock] = useState(() => new Date());
   const cart = useCart();
-  const autoAdded = useRef(false);
 
   useEffect(() => {
     const timer = window.setInterval(() => setClock(new Date()), 15000);
@@ -45,43 +46,36 @@ export default function OrderPage() {
 
   const building = useMemo(() => data?.buildings.find((b) => b.id === values.buildingId), [data, values.buildingId]);
 
-  // Arriving here with an empty cart (e.g. "Place a new order") starts with one burger, like before.
-  // Afterwards the cart is the single source of truth, shared with the menu page.
-  const cartProductId = data?.product?.id;
-  const cartMax = data ? Math.max(1, Math.min(data.max_qty_per_order, data.available_stock)) : 1;
-  const cartReady = Boolean(data && data.accepting_orders && data.available_stock > 0);
-  useEffect(() => {
-    if (!cartProductId || !cartReady) return;
-    const qty = cart.quantityOf(cartProductId);
-    if (!autoAdded.current) {
-      // Only the very first evaluation may add; a later "Remove" must leave the cart empty.
-      autoAdded.current = true;
-      if (qty === 0) { cart.add(cartProductId, cartMax); return; }
-    }
-    if (qty > cartMax) cart.setQuantity(cartProductId, cartMax, cartMax);
-  }, [cart, cartProductId, cartReady, cartMax]);
-
   if (loading) return <Shell><Header back="/" /><LoadingScreen label="Loading" /></Shell>;
   if (error || !data) return <Shell><Header back="/" /><ErrorScreen message={error ?? "No data."} onRetry={reload} /></Shell>;
 
-  const product = data.product;
-  const available = data.available_stock;
-  const maxQty = Math.max(1, Math.min(data.max_qty_per_order, available));
+  const products = storefrontProducts(data);
+  const maxQty = Math.max(1, data.max_qty_per_order);
+  const cartItems = cart.lines
+    .map((line) => ({ line, product: products.find((p) => p.id === line.productId) }))
+    .filter((x): x is { line: typeof cart.lines[number]; product: (typeof products)[number] } => Boolean(x.product));
+  const cartHasMissingItem = cartItems.length !== cart.lines.length;
+  const totalQty = cartItems.reduce((sum, x) => sum + x.line.quantity, 0);
+  const stockProblem = cartItems.some((x) => x.line.quantity > x.product.available_stock);
+  const cartHasItem = totalQty > 0;
+  const form: OrderFormValues = { ...values, quantity: totalQty };
+  const total = subtotalCents(cart.lines, (id) => products.find((p) => p.id === id)?.price_cents);
+  const anyStock = products.some((p) => p.available_stock > 0);
 
   const anyTripOpen = data.trips.some(
     (trip) => trip.closed_reason === null && !tripHasEndedToday(trip, clock)
   );
 
-  if (!product || !data.accepting_orders || available <= 0 || !anyTripOpen) {
+  if (products.length === 0 || !data.accepting_orders || !anyStock || !anyTripOpen) {
     return (
       <Shell>
         <Header back="/" />
         <div className="space-y-4 py-12 text-center">
           <p className="font-display text-3xl font-extrabold">
-            {available <= 0 ? "Sold out" : "Ordering is closed"}
+            {!anyStock ? "Sold out" : "Ordering is closed"}
           </p>
           <p className="text-sm font-medium">
-            {available > 0 && data.accepting_orders
+            {anyStock && data.accepting_orders
               ? "All of today's trips have closed. See you at the next session."
               : "Check back at the next selling session."}
           </p>
@@ -90,12 +84,6 @@ export default function OrderPage() {
       </Shell>
     );
   }
-
-  const productName = product.name;
-  const quantity = cart.quantityOf(product.id);
-  const cartHasItem = quantity > 0;
-  const form: OrderFormValues = { ...values, quantity };
-  const total = cartHasItem ? product.price_cents * quantity : 0;
 
   function set<K extends keyof OrderFormValues>(key: K, value: OrderFormValues[K]) {
     setValues((v) => ({ ...v, [key]: value }));
@@ -119,7 +107,19 @@ export default function OrderPage() {
     ev.preventDefault();
     if (submitting || !data) return;
     if (!cartHasItem) {
-      setSubmitError("Your cart is empty. Add a burger before checking out.");
+      setSubmitError("Your cart is empty. Add an item before checking out.");
+      return;
+    }
+    if (cartHasMissingItem) {
+      setSubmitError("One item is no longer on the menu. Remove it from your cart and try again.");
+      return;
+    }
+    if (stockProblem) {
+      setSubmitError("One or more quantities exceed current stock. Reduce them and try again.");
+      return;
+    }
+    if (totalQty > maxQty) {
+      setSubmitError(`This order can contain at most ${maxQty} items. Remove ${totalQty - maxQty} item${totalQty - maxQty === 1 ? "" : "s"}.`);
       return;
     }
     const selectedTrip = data.trips.find((trip) => trip.id === values.tripId);
@@ -154,7 +154,7 @@ export default function OrderPage() {
         buildingId: values.buildingId,
         floor: Number(values.floor),
         room: normalizeRoom(values.room),
-        quantity,
+        items: cartItems.map(({ line }) => ({ productId: line.productId, quantity: line.quantity })),
         method: values.method as "CASH" | "DUITNOW",
         idempotencyKey: idempotencyKey(),
         tripId: values.tripId,
@@ -169,7 +169,7 @@ export default function OrderPage() {
         createdAt: new Date().toISOString(),
         status: ticket.order_status,
         paymentStatus: ticket.payment_status,
-        items: [{ name: productName, quantity }]
+        items: cartItems.map(({ line, product }) => ({ name: product.name, quantity: line.quantity }))
       });
       cart.clear();
       navigate(
@@ -196,45 +196,63 @@ export default function OrderPage() {
     <Shell>
       <Header back="/" />
       <h1 className="font-display text-3xl font-extrabold tracking-tight">Your cart</h1>
-      <p className="mt-1 text-sm text-muted">Review your burger, choose a delivery trip and complete checkout.</p>
+      <p className="mt-1 text-sm text-muted">Review your items, choose a delivery trip and complete checkout.</p>
 
       <form onSubmit={onSubmit} noValidate className="mt-4 space-y-5">
         <section className="ticket space-y-4 p-5">
           <div className="flex items-center justify-between gap-3">
             <div>
               <h2 className="font-display text-xl font-extrabold">Shopping cart</h2>
-              <p className="text-sm text-muted">{cartHasItem ? `${quantity} burger${quantity === 1 ? "" : "s"} in your cart` : "No items added yet"}</p>
+              <p className="text-sm text-muted">{cartHasItem ? totalQty + " item" + (totalQty === 1 ? "" : "s") + " in your cart" : "No items added yet"}</p>
             </div>
-            <span className="rounded-full border-2 border-ink bg-bun px-3 py-1 text-sm font-bold">{quantity} item{quantity !== 1 ? "s" : ""}</span>
+            <span className="rounded-full border-2 border-ink bg-bun px-3 py-1 text-sm font-bold">{totalQty}/{maxQty}</span>
           </div>
 
           {cartHasItem ? (
             <>
-              <div className="rounded-xl border-2 border-ink bg-white p-4">
-                <div className="flex items-start justify-between gap-3">
-                  <div>
-                    <p className="font-display text-lg font-extrabold">{product.name}</p>
-                    <p className="text-sm text-muted">{formatRM(product.price_cents)} each</p>
-                  </div>
-                  <button type="button" onClick={() => { cart.remove(product.id); setSubmitError(null); }}
-                    className="min-h-10 rounded-lg px-3 text-sm font-bold text-ketchup underline underline-offset-2">
-                    Remove
-                  </button>
-                </div>
-                <div className="mt-4 flex items-center justify-between gap-3">
-                  <span className="text-sm font-semibold">Quantity</span>
-                  <div className="flex items-center gap-2" role="group" aria-label="Cart quantity">
-                    <button type="button" aria-label="Decrease quantity" disabled={quantity <= 1}
-                      onClick={() => cart.setQuantity(product.id, quantity - 1, maxQty)}
-                      className="grid size-10 place-items-center rounded-full border-2 border-ink bg-paper text-xl font-bold disabled:opacity-40">−</button>
-                    <output aria-live="polite" className="w-8 text-center font-display text-xl font-extrabold">{quantity}</output>
-                    <button type="button" aria-label="Increase quantity" disabled={quantity >= maxQty}
-                      onClick={() => cart.setQuantity(product.id, quantity + 1, maxQty)}
-                      className="grid size-10 place-items-center rounded-full border-2 border-ink bg-paper text-xl font-bold disabled:opacity-40">+</button>
-                  </div>
-                </div>
-                {available <= 10 && <p className="mt-3 text-sm font-semibold text-ketchup">Only {available} left in stock.</p>}
-              </div>
+              <ul className="space-y-3">
+                {cartItems.map(({ line, product }) => {
+                  const otherQty = totalQty - line.quantity;
+                  const lineMax = Math.max(1, Math.min(product.available_stock, maxQty - otherQty));
+                  return (
+                    <li key={product.id} className="rounded-xl border-2 border-ink bg-white p-4">
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="flex min-w-0 items-start gap-3">
+                          {product.image_url && <img src={product.image_url} alt="" className="size-16 shrink-0 rounded-lg border-2 border-ink object-cover" />}
+                          <div>
+                            <p className="font-display text-lg font-extrabold">{product.name}</p>
+                            <p className="text-sm text-muted">{formatRM(product.price_cents)} each · {product.available_stock} in stock</p>
+                          </div>
+                        </div>
+                        <button type="button" onClick={() => { cart.remove(product.id); setSubmitError(null); }}
+                          className="min-h-10 shrink-0 rounded-lg px-2 text-sm font-bold text-ketchup underline underline-offset-2">
+                          Remove
+                        </button>
+                      </div>
+                      <div className="mt-4 flex items-center justify-between gap-3">
+                        <span className="text-sm font-semibold">Quantity</span>
+                        <div className="flex items-center gap-2" role="group" aria-label={product.name + " quantity"}>
+                          <button type="button" aria-label={"Decrease " + product.name} disabled={line.quantity <= 1}
+                            onClick={() => cart.setQuantity(product.id, line.quantity - 1, lineMax)}
+                            className="grid size-10 place-items-center rounded-full border-2 border-ink bg-paper text-xl font-bold disabled:opacity-40">−</button>
+                          <output aria-live="polite" className="w-8 text-center font-display text-xl font-extrabold">{line.quantity}</output>
+                          <button type="button" aria-label={"Increase " + product.name} disabled={line.quantity >= lineMax}
+                            onClick={() => cart.setQuantity(product.id, line.quantity + 1, lineMax)}
+                            className="grid size-10 place-items-center rounded-full border-2 border-ink bg-paper text-xl font-bold disabled:opacity-40">+</button>
+                        </div>
+                      </div>
+                      {line.quantity > product.available_stock && (
+                        <p className="mt-3 text-sm font-semibold text-ketchup">Only {product.available_stock} left in stock.</p>
+                      )}
+                      <p className="mt-2 text-right font-bold">{formatRM(product.price_cents * line.quantity)}</p>
+                    </li>
+                  );
+                })}
+              </ul>
+
+              {cartHasMissingItem && <Notice tone="error">An item in your saved cart is no longer on the menu. Return to the menu and remove unavailable items.</Notice>}
+              {stockProblem && <Notice tone="error">One or more items exceed current stock. Reduce the quantities before checkout.</Notice>}
+              {totalQty > maxQty && <Notice tone="error">This order can contain at most {maxQty} items.</Notice>}
 
               <div className="space-y-2 text-sm">
                 <div className="flex justify-between"><span>Subtotal</span><span className="font-semibold">{formatRM(total)}</span></div>
@@ -250,13 +268,13 @@ export default function OrderPage() {
           ) : (
             <div className="space-y-3 rounded-xl border-2 border-dashed border-ink p-4 text-center">
               <p className="font-bold">Your cart is empty</p>
-              <p className="text-sm text-muted">Add a crispy chicken burger to continue.</p>
-              <Button type="button" onClick={() => cart.add(product.id, maxQty)}>Add burger</Button>
+              <p className="text-sm text-muted">Choose products from the menu before checking out.</p>
+              <LinkButton to="/" variant="secondary">Browse menu</LinkButton>
             </div>
           )}
           <button type="button" onClick={cancelCart}
             className="min-h-11 w-full rounded-xl border-2 border-ketchup bg-paper px-4 py-2.5 text-sm font-bold text-ketchup">
-            Cancel cart
+            Clear cart
           </button>
         </section>
 
@@ -343,15 +361,15 @@ export default function OrderPage() {
 
         <section className="ticket p-5">
           <fieldset>
-            <legend className="font-display text-xl font-extrabold">Your burger</legend>
+            <legend className="font-display text-xl font-extrabold">Kitchen note</legend>
             <div className="mt-3 space-y-3">
               {([
-                { custom: false, title: "Standard", body: "Just like the menu." },
-                { custom: true, title: "Custom", body: "Add a note for the kitchen, e.g. no sauce." }
+                { custom: false, title: "No special request", body: "Prepare the order as listed on the menu." },
+                { custom: true, title: "Add a kitchen note", body: "Use one note for the whole order, e.g. no sauce." }
               ] as const).map((o) => (
                 <label key={o.title}
                   className={`flex min-h-14 cursor-pointer items-start gap-3 rounded-xl border-2 border-ink p-3 ${values.custom === o.custom ? "bg-bun" : "bg-white"} has-[:focus-visible]:outline-3 has-[:focus-visible]:outline-ketchup`}>
-                  <input type="radio" name="burgerType" checked={values.custom === o.custom}
+                  <input type="radio" name="orderNoteType" checked={values.custom === o.custom}
                     onChange={() => set("custom", o.custom)} className="mt-1 size-5 accent-ink" />
                   <span>
                     <span className="block font-bold">{o.title}</span>
@@ -363,7 +381,7 @@ export default function OrderPage() {
             {values.custom && (
               <div className="mt-4">
                 <Field label="Note for the kitchen" htmlFor="note" error={err("note")}
-                  hint={`${values.note.trim().length}/${NOTE_MAX}. The note applies to all burgers in this order. For allergies, tell the seller directly.`}>
+                  hint={`${values.note.trim().length}/${NOTE_MAX}. The note applies to the whole order. For allergies, tell the seller directly.`}>
                   <textarea id="note" rows={3} maxLength={NOTE_MAX} className={inputClass} value={values.note}
                     placeholder="e.g. no sauce, extra spicy" onChange={(e) => set("note", e.target.value)} {...aria("note")} />
                 </Field>
@@ -397,7 +415,11 @@ export default function OrderPage() {
 
         {submitError && <Notice tone="error">{submitError}</Notice>}
 
-        <Button type="submit" busy={submitting} disabled={!cartHasItem}>
+        <Button
+          type="submit"
+          busy={submitting}
+          disabled={!cartHasItem || cartHasMissingItem || stockProblem || totalQty > maxQty}
+        >
           {submitting ? "Placing order" : `Place order · ${formatRM(total)}`}
         </Button>
           </>

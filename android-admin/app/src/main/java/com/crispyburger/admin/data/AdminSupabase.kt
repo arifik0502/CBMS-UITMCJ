@@ -20,6 +20,9 @@ import java.time.LocalDate
 import kotlin.time.Duration.Companion.minutes
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.builtins.ListSerializer
+import kotlinx.serialization.json.add
+import kotlinx.serialization.json.buildJsonArray
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
 
@@ -83,14 +86,9 @@ object AdminSupabase : AdminApi {
         get() = BuildConfig.SUPABASE_URL.isNotBlank() &&
             BuildConfig.SUPABASE_ANON_KEY.isNotBlank()
 
-    /** Optional client-side allow-list from local.properties. Blank means "server decides". */
+    /** Optional sign-in email prefill from local.properties. Server roles remain the authority. */
     val configuredEmail: String
         get() = BuildConfig.DEVELOPER_EMAIL.trim()
-
-    private fun emailAllowed(email: String?): Boolean {
-        val expected = configuredEmail
-        return expected.isBlank() || email.equals(expected, ignoreCase = true)
-    }
 
     override fun friendlyError(error: Throwable, fallback: String): String =
         ErrorMessages.map(error, fallback)
@@ -133,10 +131,6 @@ object AdminSupabase : AdminApi {
     suspend fun signInDeveloper(email: String, password: String): DeveloperProfile {
         require(email.isNotBlank()) { "Enter your email." }
         require(password.isNotBlank()) { "Enter your password." }
-        if (!emailAllowed(email.trim())) {
-            throw SecurityException("This account is not approved for CBMS Admin.")
-        }
-
         client.auth.signInWith(Email) {
             this.email = email.trim()
             this.password = password
@@ -149,11 +143,7 @@ object AdminSupabase : AdminApi {
         if (!isConfigured) return null
 
         client.auth.awaitInitialization()
-        val user = client.auth.currentUserOrNull() ?: return null
-        if (!emailAllowed(user.email)) {
-            client.auth.signOut()
-            return null
-        }
+        client.auth.currentUserOrNull() ?: return null
 
         return try {
             requireDeveloperProfile(force = true)
@@ -514,22 +504,94 @@ object AdminSupabase : AdminApi {
         }
     }
 
+    // ---- website customization ----
+
+    override suspend fun loadSiteState(): SiteState {
+        requireDeveloperSession()
+        val json = client.postgrest.rpc("admin_get_site_state", buildJsonObject { }).data
+        return SiteJson.decodeFromString(SiteState.serializer(), json)
+    }
+
+    override suspend fun saveSiteDraft(config: SiteConfig) {
+        requireDeveloperSession()
+        client.postgrest.rpc(
+            "admin_save_site_draft",
+            buildJsonObject { put("p_config", SiteJson.encodeToJsonElement(SiteConfig.serializer(), config)) }
+        )
+    }
+
+    override suspend fun publishSite() {
+        requireDeveloperSession()
+        client.postgrest.rpc("admin_publish_site", buildJsonObject { })
+    }
+
+    override suspend fun discardSiteDraft() {
+        requireDeveloperSession()
+        client.postgrest.rpc("admin_discard_site_draft", buildJsonObject { })
+    }
+
+    override suspend fun loadSiteHistory(): List<SiteVersion> {
+        requireDeveloperSession()
+        val json = client.postgrest.rpc("admin_list_site_history", buildJsonObject { }).data
+        return SiteJson.decodeFromString(ListSerializer(SiteVersion.serializer()), json)
+    }
+
+    override suspend fun restoreSiteVersion(id: String) {
+        requireDeveloperSession()
+        client.postgrest.rpc("admin_restore_site_version", buildJsonObject { put("p_id", id) })
+    }
+
+    override suspend fun uploadSiteImage(jpeg: ByteArray): String {
+        requireDeveloperSession()
+        require(jpeg.isNotEmpty()) { "The picture is empty." }
+        require(jpeg.size <= 1_000_000) { "The picture is too big. Pick a smaller one." }
+        val suffix = java.util.UUID.randomUUID().toString().replace("-", "").take(8)
+        val path = "${System.currentTimeMillis()}-$suffix.jpg"
+        val bucket = client.storage.from("site-assets")
+        bucket.upload(path, jpeg) {
+            upsert = false
+            contentType = io.ktor.http.ContentType.Image.JPEG
+        }
+        return bucket.publicUrl(path)
+    }
+
     // ---- catalog / inventory ----
 
     override suspend fun loadProducts(): List<AdminProduct> {
         requireDeveloperSession()
-        return client.from("products")
-            .select(columns = Columns.list(
-                "id",
-                "sku",
-                "name",
-                "description",
-                "price_cents",
-                "is_active"
-            )) {
-                order("name", Order.ASCENDING)
+        return client.postgrest.rpc(
+            "admin_list_products",
+            buildJsonObject { }
+        ).decodeAs()
+    }
+
+    override suspend fun createProduct(
+        sku: String,
+        name: String,
+        description: String,
+        priceCents: Int,
+        imageUrl: String?,
+        initialStock: Int
+    ) {
+        requireDeveloperSession()
+        val normalizedSku = ProductValidation.normalizeSku(sku)
+            ?: throw IllegalArgumentException("SKU must be 2-20 letters, numbers, hyphens or underscores.")
+        require(name.trim().length in 2..80) { "Product name must be 2-80 characters." }
+        require(description.trim().length <= 500) { "Description must be 500 characters or fewer." }
+        require(priceCents in 1..1_000_000) { "Enter a valid price." }
+        require(initialStock in 0..100_000) { "Initial stock must be between 0 and 100,000." }
+
+        client.postgrest.rpc(
+            "admin_create_product",
+            buildJsonObject {
+                put("p_sku", normalizedSku)
+                put("p_name", name.trim())
+                put("p_description", description.trim())
+                put("p_price_cents", priceCents)
+                put("p_image_url", imageUrl)
+                put("p_initial_stock", initialStock)
             }
-            .decodeList<AdminProduct>()
+        )
     }
 
     override suspend fun updateProductDetails(
@@ -537,7 +599,9 @@ object AdminSupabase : AdminApi {
         sku: String,
         name: String,
         description: String,
-        priceCents: Int
+        priceCents: Int,
+        imageUrl: String?,
+        isActive: Boolean
     ) {
         requireDeveloperSession()
         val normalizedSku = ProductValidation.normalizeSku(sku)
@@ -547,13 +611,103 @@ object AdminSupabase : AdminApi {
         require(priceCents in 1..1_000_000) { "Enter a valid price." }
 
         client.postgrest.rpc(
-            "update_product_details",
+            "admin_update_product",
             buildJsonObject {
                 put("p_product_id", productId)
                 put("p_sku", normalizedSku)
                 put("p_name", name.trim())
                 put("p_description", description.trim())
                 put("p_price_cents", priceCents)
+                put("p_image_url", imageUrl)
+                put("p_is_active", isActive)
+            }
+        )
+    }
+
+    override suspend fun uploadProductImage(jpeg: ByteArray): String {
+        requireDeveloperSession()
+        require(jpeg.isNotEmpty()) { "The product photo is empty." }
+        require(jpeg.size <= 1_000_000) { "The product photo is too big. Pick a smaller one." }
+        val suffix = java.util.UUID.randomUUID().toString().replace("-", "").take(8)
+        val path = "${System.currentTimeMillis()}-$suffix.jpg"
+        val bucket = client.storage.from("product-images")
+        bucket.upload(path, jpeg) {
+            upsert = false
+            contentType = io.ktor.http.ContentType.Image.JPEG
+        }
+        return bucket.publicUrl(path)
+    }
+
+    override suspend fun loadDeliverySettings(): AdminDeliverySettings {
+        requireDeveloperSession()
+        return client.postgrest.rpc(
+            "admin_get_delivery_settings",
+            buildJsonObject { }
+        ).decodeAs<AdminDeliverySettings>()
+    }
+
+    override suspend fun saveDeliveryTrip(
+        id: String?,
+        tripNo: Int,
+        label: String,
+        startTime: String,
+        endTime: String,
+        isOpen: Boolean
+    ) {
+        requireDeveloperSession()
+        require(tripNo in 1..50) { "Trip number must be between 1 and 50." }
+        require(label.trim().isNotEmpty()) { "Enter a trip name." }
+        client.postgrest.rpc(
+            "admin_save_trip",
+            buildJsonObject {
+                put("p_id", id)
+                put("p_trip_no", tripNo)
+                put("p_label", label.trim())
+                put("p_start_time", startTime)
+                put("p_end_time", endTime)
+                put("p_is_open", isOpen)
+            }
+        )
+        lookups = null
+    }
+
+    override suspend fun saveBuilding(
+        id: String?,
+        code: String,
+        name: String,
+        floors: List<Int>,
+        sortOrder: Int,
+        isActive: Boolean
+    ) {
+        requireDeveloperSession()
+        val normalizedCode = code.trim().uppercase()
+        require(normalizedCode.matches(Regex("^[A-Z0-9][A-Z0-9_-]{0,7}$"))) {
+            "Building code must be 1-8 letters or numbers."
+        }
+        require(name.trim().isNotEmpty()) { "Enter a building name." }
+        require(floors.isNotEmpty()) { "Add at least one floor." }
+        client.postgrest.rpc(
+            "admin_save_building",
+            buildJsonObject {
+                put("p_id", id)
+                put("p_code", normalizedCode)
+                put("p_name", name.trim())
+                put("p_floors", buildJsonArray { floors.distinct().sorted().forEach { add(it) } })
+                put("p_sort_order", sortOrder)
+                put("p_is_active", isActive)
+            }
+        )
+        lookups = null
+    }
+
+    override suspend fun saveOrderControls(acceptingOrders: Boolean, maxQtyPerOrder: Int) {
+        requireDeveloperSession()
+        require(maxQtyPerOrder in 1..99) { "Maximum items per order must be between 1 and 99." }
+        client.postgrest.rpc(
+            "admin_set_order_controls",
+            buildJsonObject {
+                put("p_accepting_orders", acceptingOrders)
+                put("p_max_qty_per_order", maxQtyPerOrder)
             }
         )
     }
@@ -621,12 +775,6 @@ object AdminSupabase : AdminApi {
         val user = client.auth.currentUserOrNull()
             ?: throw SecurityException("Your session has expired. Sign in again.")
 
-        if (!emailAllowed(user.email)) {
-            clearCaches()
-            client.auth.signOut()
-            throw SecurityException("This account is not approved for CBMS Admin.")
-        }
-
         val cached = cachedProfile
         val now = System.currentTimeMillis()
         if (!force && cached != null && cached.id == user.id && now - cachedProfileAt < PROFILE_TTL_MS) {
@@ -641,10 +789,10 @@ object AdminSupabase : AdminApi {
             }
             .decodeSingle<DeveloperProfile>()
 
-        if (!profile.isActive || profile.role != "OWNER" || profile.id != user.id) {
+        if (!profile.isActive || profile.role !in setOf("OWNER", "ADMIN") || profile.id != user.id) {
             clearCaches()
             client.auth.signOut()
-            throw SecurityException("Developer access has not been enabled for this account.")
+            throw SecurityException("Admin access has not been enabled for this account.")
         }
 
         cachedProfile = profile

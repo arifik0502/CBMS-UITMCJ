@@ -17,13 +17,44 @@ interface AdminApi {
     suspend fun updateOrderStatus(orderId: String, status: String)
 
     suspend fun loadProducts(): List<AdminProduct>
+    suspend fun createProduct(
+        sku: String,
+        name: String,
+        description: String,
+        priceCents: Int,
+        imageUrl: String?,
+        initialStock: Int
+    )
     suspend fun updateProductDetails(
         productId: String,
         sku: String,
         name: String,
         description: String,
-        priceCents: Int
+        priceCents: Int,
+        imageUrl: String?,
+        isActive: Boolean
     )
+    /** Uploads a JPEG to the public product-images bucket and returns its public URL. */
+    suspend fun uploadProductImage(jpeg: ByteArray): String
+
+    suspend fun loadDeliverySettings(): AdminDeliverySettings
+    suspend fun saveDeliveryTrip(
+        id: String?,
+        tripNo: Int,
+        label: String,
+        startTime: String,
+        endTime: String,
+        isOpen: Boolean
+    )
+    suspend fun saveBuilding(
+        id: String?,
+        code: String,
+        name: String,
+        floors: List<Int>,
+        sortOrder: Int,
+        isActive: Boolean
+    )
+    suspend fun saveOrderControls(acceptingOrders: Boolean, maxQtyPerOrder: Int)
 
     suspend fun loadInventory(): List<AdminInventoryItem>
     suspend fun adjustInventory(productId: String, type: String, quantity: Int, reason: String)
@@ -34,6 +65,16 @@ interface AdminApi {
 
     suspend fun loadSalesReport(from: LocalDate, to: LocalDate): AdminSalesReport
     suspend fun loadAllDeliveredOrders(from: LocalDate, to: LocalDate): List<AdminSalesOrder>
+
+    // Website customization (see supabase/migrations/20261123000001_site_customization.sql)
+    suspend fun loadSiteState(): SiteState
+    suspend fun saveSiteDraft(config: SiteConfig)
+    suspend fun publishSite()
+    suspend fun discardSiteDraft()
+    suspend fun loadSiteHistory(): List<SiteVersion>
+    suspend fun restoreSiteVersion(id: String)
+    /** Uploads a JPEG to the public site-assets bucket and returns its public URL. */
+    suspend fun uploadSiteImage(jpeg: ByteArray): String
 
     fun friendlyError(error: Throwable, fallback: String): String
 }

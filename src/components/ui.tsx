@@ -1,19 +1,43 @@
 import type { ButtonHTMLAttributes, ReactNode } from "react";
 import { Link } from "react-router-dom";
+import { useSiteConfig } from "../lib/SiteConfigContext";
+
+/** Owner-controlled announcement strip (set from the admin app). */
+function Banner() {
+  const { banner } = useSiteConfig();
+  if (!banner.enabled || !banner.text) return null;
+  const tones = { info: "bg-paper", promo: "bg-bun-deep", warn: "bg-[#ffe3e0]" } as const;
+  const external = /^https:\/\//.test(banner.link_to);
+  return (
+    <div role="status" className={`mb-2 rounded-xl border-2 border-ink px-4 py-2.5 text-center text-sm font-bold ${tones[banner.tone]}`}>
+      {banner.text}
+      {banner.link_label && banner.link_to && (
+        <>
+          {" "}
+          {external
+            ? <a href={banner.link_to} target="_blank" rel="noopener noreferrer" className="underline">{banner.link_label}</a>
+            : <Link to={banner.link_to} className="underline">{banner.link_label}</Link>}
+        </>
+      )}
+    </div>
+  );
+}
 
 export function Shell({ children, wide = false }: { children: ReactNode; wide?: boolean }) {
   return (
     <div className={`mx-auto w-full ${wide ? "max-w-3xl" : "max-w-md"} px-4 pb-28 pt-[max(1rem,env(safe-area-inset-top))]`}>
+      <Banner />
       {children}
     </div>
   );
 }
 
 export function Header({ title, back }: { title?: string; back?: string }) {
+  const { brand_name } = useSiteConfig();
   return (
     <header className="flex items-center justify-between py-3">
       <Link to="/" className="font-display text-xl font-extrabold tracking-tight">
-        Crispy Burger
+        {brand_name || "Crispy Burger"}
       </Link>
       {back ? (
         <Link to={back} className="min-h-11 rounded-full border-2 border-ink px-4 py-2 text-sm font-semibold">

@@ -1,8 +1,10 @@
 # Copy to local.properties (git-ignored). Android Studio adds sdk.dir automatically.
 supabase.url=https://YOUR-PROJECT-REF.supabase.co
 supabase.anonKey=YOUR-ANON-PUBLIC-KEY
-# Optional: restricts which account may sign in on this build (the server OWNER check still applies).
+# Optional: pre-fills the sign-in email field. Server roles remain the authority.
 developer.email=you@example.com
+# Customer website address (https://...). Needed for the Website tab's live preview.
+site.url=https://YOUR-SITE.pages.dev
 # Optional release signing (release builds fall back to unsigned if any of these are missing):
 # release.storeFile=keystore/cbms-release.jks
 # release.storePassword=

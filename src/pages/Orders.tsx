@@ -6,7 +6,7 @@ import CancelOrder from "../components/CancelOrder";
 import { Header, LinkButton, LoadingScreen, Notice, Pill, Shell } from "../components/ui";
 import { getOrder, getTicketsByTokens } from "../lib/api";
 import { mapLimit } from "../lib/async";
-import { getOrderability } from "../lib/availability";
+import { getOrderability, storefrontProducts } from "../lib/availability";
 import { useCart } from "../lib/cart";
 import { subtotalCents } from "../lib/cartLogic";
 import { formatRM } from "../lib/format";
@@ -125,20 +125,20 @@ export default function OrdersPage() {
   const counts = useMemo(() => countByTab(orders), [orders]);
   const shown = useMemo(() => orders.filter((o) => orderTab(o) === tab), [orders, tab]);
 
-  const products = useMemo(() => (storefront?.product ? [storefront.product] : []), [storefront]);
+  const products = useMemo(() => storefront ? storefrontProducts(storefront) : [], [storefront]);
   const orderability = storefront ? getOrderability(storefront, cachedOnly, clock) : null;
   const maxQty = orderability?.maxQty ?? 1;
   const cartTotal = subtotalCents(cart.lines, (id) => products.find((p) => p.id === id)?.price_cents);
 
   function reorder(o: StoredOrder) {
-    if (!storefront?.product) {
+    if (products.length === 0) {
       setNotice({ tone: "error", text: "The menu has not loaded yet. Try again in a moment." });
       return;
     }
     if (cart.count > 0 && !window.confirm("Replace the items in your cart with this order?")) return;
     const result = buildReorder(
       o.items ?? [],
-      [{ id: storefront.product.id, name: storefront.product.name }],
+      products.map((p) => ({ id: p.id, name: p.name, availableStock: p.available_stock })),
       maxQty
     );
     if (result.lines.length === 0) {
