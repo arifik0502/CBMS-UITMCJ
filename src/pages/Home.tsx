@@ -2,6 +2,8 @@ import { Fragment, useEffect, useMemo, useState, type ReactNode } from "react";
 import { Link } from "react-router-dom";
 import { CartBar } from "../components/CartBar";
 import { CartDrawer } from "../components/CartDrawer";
+import { StorefrontBanner } from "../components/StorefrontBanner";
+import { HomeScreenGuide } from "../components/HomeScreenGuide";
 import { Stepper } from "../components/Stepper";
 import { Button, ErrorScreen, LoadingScreen, Pill, Shell } from "../components/ui";
 import { useCart } from "../lib/cart";
@@ -225,6 +227,8 @@ export default function Home() {
 
   const blocks: ReactNode[] = [];
   const visible = site.sections.filter((s) => s.visible);
+  const firstHero = visible.find((section) => section.type === "hero");
+  if (!firstHero) blocks.push(<StorefrontBanner key="promo-banner" />, <HomeScreenGuide key="install-guide" />);
   for (let i = 0; i < visible.length; i++) {
     const s = visible[i];
     if (TICKET_TYPES.has(s.type)) {
@@ -240,6 +244,8 @@ export default function Home() {
           </section>
         );
       }
+    } else if (s === firstHero) {
+      blocks.push(<StorefrontBanner key={s.id} hero={renderHero(s)} />, <HomeScreenGuide key="install-guide" />);
     } else if (s.type === "hero") blocks.push(renderHero(s));
     else if (s.type === "menu") blocks.push(renderMenu(s));
     else if (s.type === "support") {
