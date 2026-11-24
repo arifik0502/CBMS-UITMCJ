@@ -120,7 +120,7 @@ h1, h2, h3, legend { overflow-wrap: anywhere; }
   gap: 1.25rem;
   padding: clamp(1.5rem, 5vw, 4.5rem);
 }
-.hero-copy h1 {
+.hero-copy :is(h1, h2) {
   font: 800 clamp(2.6rem, 5.7vw, 5.4rem)/.98 var(--font-display);
   letter-spacing: -.055em;
   text-wrap: balance;
@@ -157,4 +157,45 @@ h1, h2, h3, legend { overflow-wrap: anywhere; }
 }
 @media (prefers-reduced-motion: reduce) {
   .action, .nav-link { transition: none; }
+}
+
+.banner-window { border-radius: 1.5rem; overflow: clip; touch-action: pan-y pinch-zoom; }
+.banner-track { display: grid; grid-auto-flow: column; grid-auto-columns: 100%; transition: transform .45s ease; }
+.banner-slide { display: grid; min-width: 0; }
+.banner-slide .storefront-hero { border-radius: 0; }
+@media (max-width: 43.999rem) {
+  .banner-slide .storefront-hero { grid-template-rows: 1fr auto; }
+}
+.snack-banner { color: #fdf2cb; background: #193f33; }
+.snack-banner p { max-width: 20em; font-size: clamp(1rem, 2vw, 1.3rem); line-height: 1.45; }
+.teaser-banner {
+  position: relative;
+  display: grid;
+  place-items: center;
+  padding: 2rem;
+  text-align: center;
+  color: #ffeabe;
+  background: #8e2222;
+}
+.teaser-banner::before, .teaser-banner::after {
+  content: "";
+  position: absolute;
+  inset-inline: 0;
+  height: 1.5rem;
+  background: repeating-conic-gradient(#ffeabe 0 25%, transparent 0 50%) 0 0 / 1.5rem 1.5rem;
+}
+.teaser-banner::before { top: 0; }
+.teaser-banner::after { bottom: 0; }
+.teaser-banner h2 { font: 800 clamp(2.5rem, 7vw, 6rem)/.98 var(--font-display); letter-spacing: -.055em; }
+.teaser-banner em { font-family: Georgia, serif; font-weight: 400; }
+.banner-controls { display: flex; justify-content: space-between; align-items: center; padding: .4rem 0; font-size: .875rem; }
+.banner-controls button { min-height: 44px; min-width: 44px; padding: .4rem .8rem; border-radius: 999px; font-weight: 700; }
+.banner-controls button:hover { background: var(--color-paper); }
+.install-guide { border-block: 1px solid var(--hairline); font-size: .95rem; }
+.install-guide summary { cursor: pointer; padding: .85rem 1rem; font-weight: 750; }
+.install-guide h3 { font-family: var(--font-display); font-size: 1.1rem; font-weight: 750; }
+.install-guide ol { list-style: decimal; padding-inline-start: 1.4rem; }
+.install-guide li { margin-top: .4rem; }
+@media (prefers-reduced-motion: reduce) {
+  .banner-track { transition: none; }
 }
