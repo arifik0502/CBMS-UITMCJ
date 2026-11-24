@@ -21,7 +21,7 @@ export function StorefrontBanner({ hero }: { hero?: ReactNode }) {
     if (!playing || hovered) return;
     const timer = window.setInterval(() => {
       if (!document.hidden) setActive((current) => (current + 1) % slideCount);
-    }, 8000);
+    }, 4000);
     return () => window.clearInterval(timer);
   }, [playing, hovered, slideCount]);
 
