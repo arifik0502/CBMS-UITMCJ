@@ -1,0 +1,17 @@
+[
+  {
+    "zone": "Kolej Kediaman A (KKA)",
+    "residents": "Pelajar Lelaki (Siswa)",
+    "colleges": ["Kolej Sulok Belingkung (SB)", "Kolej Taming Sari (TS)", "Kolej Sempana Riau (SR)"]
+  },
+  {
+    "zone": "Kolej Kediaman B (KKB)",
+    "residents": "Pelajar Perempuan (Siswi)",
+    "colleges": ["Kolej Mutiara", "Kolej Baiduri", "Kolej Nilam"]
+  },
+  {
+    "zone": "Kolej Kediaman C (KKC)",
+    "residents": "Pelajar Perempuan (Siswi)",
+    "colleges": ["Kolej Intan", "Kolej Zamrud", "Kolej Si Manja Kini (SMK)", "Kolej Sempana Alam Buana (SAB)"]
+  }
+]

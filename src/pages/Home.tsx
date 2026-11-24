@@ -1,3 +1,4 @@
+import { CollegeDirectory } from "../components/CollegeDirectory";
 import { Fragment, useEffect, useMemo, useState, type ReactNode } from "react";
 import { Link } from "react-router-dom";
 import { CartBar } from "../components/CartBar";
@@ -272,7 +273,10 @@ export default function Home() {
         </div>
       </header>
 
-      <main>{blocks}</main>
+      <main>
+        {blocks}
+        <div className="mt-6"><CollegeDirectory /></div>
+      </main>
 
       {site.footer_note && <p className="mt-6 text-center text-sm text-muted">{site.footer_note}</p>}
 

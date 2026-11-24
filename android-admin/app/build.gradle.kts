@@ -31,13 +31,14 @@ val hasReleaseSigning = listOf(
 android {
     namespace = "com.crispyburger.admin"
     compileSdk = 35
+    sourceSets["main"].assets.srcDir(rootProject.file("../shared/campus"))
 
     defaultConfig {
         applicationId = "com.crispyburger.admin"
         minSdk = 26
         targetSdk = 35
-        versionCode = 18
-        versionName = "0.6.2"
+        versionCode = 19
+        versionName = "0.6.3"
         buildConfigField("String", "SUPABASE_URL", quoted(localProp("supabase.url")))
         buildConfigField("String", "SUPABASE_ANON_KEY", quoted(localProp("supabase.anonKey")))
         // Optional sign-in email prefill. Supabase profile roles remain the real gate.

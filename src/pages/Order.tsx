@@ -1,3 +1,4 @@
+import { CollegeDirectory } from "../components/CollegeDirectory";
 import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button, ErrorScreen, Field, Header, inputClass, LinkButton, LoadingScreen, Notice, Shell } from "../components/ui";
@@ -308,6 +309,8 @@ export default function OrderPage() {
               </select>
             </Field>
           </div>
+
+          <CollegeDirectory />
 
           <Field
             label="Room number"
