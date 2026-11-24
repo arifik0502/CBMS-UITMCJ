@@ -203,6 +203,8 @@ fun DeliverySettingsScreen(vm: DeliverySettingsViewModel) {
                 }
             }
 
+            item("segamat-colleges") { CollegeDirectory() }
+
             item("buildings-title") {
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                     Text("Delivery buildings", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)

@@ -4,10 +4,12 @@ on:
   push:
     paths:
       - 'android-admin/**'
+      - 'shared/campus/**'
       - '.github/workflows/android-admin.yml'
   pull_request:
     paths:
       - 'android-admin/**'
+      - 'shared/campus/**'
       - '.github/workflows/android-admin.yml'
 
 jobs:
