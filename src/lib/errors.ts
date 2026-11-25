@@ -8,6 +8,7 @@ const MESSAGES: Record<string, (hint?: string | null) => string> = {
   INVALID_NAME: () => "Check your name.",
   INVALID_PHONE: () => "Check your phone number.",
   INVALID_ROOM: () => "Check your room number.",
+  LOBBY_DELIVERY_ONLY: () => "This college accepts lobby deliveries only. Refresh checkout and select the college again.",
   INVALID_LOCATION: () => "That building and floor do not match. Pick them again.",
   TRIP_REQUIRED: () => "Choose a delivery trip.",
   INVALID_TRIP: () => "That trip is not available. Pick another.",

@@ -9,6 +9,7 @@ export type PaymentStatus =
 export type PaymentMethod = "CASH" | "DUITNOW";
 
 export interface Building {
+  college_zone?: "KKA" | "KKB" | "KKC" | null;
   id: string;
   code: string;
   name: string;

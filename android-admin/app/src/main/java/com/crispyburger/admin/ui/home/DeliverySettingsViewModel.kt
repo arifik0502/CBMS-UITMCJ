@@ -48,6 +48,7 @@ data class BuildingDraft(
     val name: String = "",
     val floorsText: String = "",
     val sortOrder: String = "0",
+    val lobbyOnly: Boolean = false,
     val isActive: Boolean = true
 ) {
     val floors: List<Int>?
@@ -74,6 +75,7 @@ data class BuildingDraft(
             name = building.name,
             floorsText = building.floors.joinToString(", "),
             sortOrder = building.sortOrder.toString(),
+            lobbyOnly = building.lobbyOnly,
             isActive = building.isActive
         )
     }

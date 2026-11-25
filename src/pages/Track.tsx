@@ -88,7 +88,9 @@ export default function TrackPage() {
             <p className="rounded-lg border-2 border-ink bg-bun/60 px-3 py-2 font-semibold">Custom: {order.note}</p>
           )}
           <p className="pt-1 text-muted">
-            Deliver to {order.customer_name}, {roomLabel(order.building_code, order.room_number)} (floor {order.floor_number}).
+            Deliver to {order.customer_name}, {order.floor_number === 0 && order.room_number === "LOBBY"
+              ? `${order.building_code} lobby`
+              : `${roomLabel(order.building_code, order.room_number)} (floor ${order.floor_number})`}.
             {" "}{order.payment_method === "CASH" ? "Paying cash on delivery." : "Paying by DuitNow QR."}
           </p>
         </div>

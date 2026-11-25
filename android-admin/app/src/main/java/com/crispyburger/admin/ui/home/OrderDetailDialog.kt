@@ -109,7 +109,7 @@ fun OrderDetailDialog(
 
                     DetailLine("Customer", order.customerName)
                     DetailLine("Phone", order.customerPhone)
-                    DetailLine("Location", "${order.buildingLabel}, Floor ${order.floorNumber}, Room ${order.roomNumber}")
+                    DetailLine("Location", order.deliveryAddress)
                     DetailLine("Payment", PaymentMethod.label(order.paymentMethod))
                     DetailLine("Total", Money.format(order.totalCents))
                     DetailLine("Ordered", Formats.malaysiaDateTime(order.createdAt))
