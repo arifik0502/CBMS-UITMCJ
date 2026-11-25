@@ -8,3 +8,13 @@
   X-Content-Type-Options: nosniff
   Referrer-Policy: strict-origin-when-cross-origin
   Permissions-Policy: camera=(), microphone=(), geolocation=()
+/order
+  X-Robots-Tag: noindex
+/orders
+  X-Robots-Tag: noindex
+/support
+  X-Robots-Tag: noindex
+/pay/*
+  X-Robots-Tag: noindex, nofollow
+/track/*
+  X-Robots-Tag: noindex, nofollow
