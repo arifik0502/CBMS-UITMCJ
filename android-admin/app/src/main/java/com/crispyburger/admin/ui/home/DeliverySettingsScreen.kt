@@ -225,7 +225,7 @@ fun DeliverySettingsScreen(vm: DeliverySettingsViewModel) {
                                 Column(modifier = Modifier.weight(1f)) {
                                     Text(building.code + " · " + building.name, fontWeight = FontWeight.Bold)
                                     Text(
-                                        "Floors: " + building.floors.joinToString(", "),
+                                        if (building.lobbyOnly) "${building.collegeZone} · Lobby only" else "Floors: " + building.floors.joinToString(", "),
                                         style = MaterialTheme.typography.bodySmall
                                     )
                                 }
@@ -345,14 +345,18 @@ fun DeliverySettingsScreen(vm: DeliverySettingsViewModel) {
                         label = { Text("Building name") },
                         singleLine = true
                     )
-                    OutlinedTextField(
-                        value = draft.floorsText,
-                        onValueChange = { if (it.matches(FloorInput)) buildingDraft = draft.copy(floorsText = it) },
-                        modifier = Modifier.fillMaxWidth(),
-                        label = { Text("Floors") },
-                        supportingText = { Text("Type floor numbers separated by commas, e.g. 1, 2, 3, 4.") },
-                        singleLine = true
-                    )
+                    if (draft.lobbyOnly) {
+                        Text("Delivery point: college lobby")
+                    } else {
+                        OutlinedTextField(
+                            value = draft.floorsText,
+                            onValueChange = { if (it.matches(FloorInput)) buildingDraft = draft.copy(floorsText = it) },
+                            modifier = Modifier.fillMaxWidth(),
+                            label = { Text("Floors") },
+                            supportingText = { Text("Type floor numbers separated by commas, e.g. 1, 2, 3, 4.") },
+                            singleLine = true
+                        )
+                    }
                     OutlinedTextField(
                         value = draft.sortOrder,
                         onValueChange = { v -> if (v.matches(IntInput)) buildingDraft = draft.copy(sortOrder = v) },

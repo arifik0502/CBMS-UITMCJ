@@ -34,7 +34,11 @@ data class AdminOrder(
     val tripLabel: String = "",
     val tripWindow: String = "",
     val tripNo: Int = 0
-)
+) {
+    val deliveryAddress: String
+        get() = if (floorNumber == 0 && roomNumber == "LOBBY") "$buildingLabel · Lobby"
+                else "$buildingLabel · Floor $floorNumber · Room $roomNumber"
+}
 
 @Serializable
 data class AdminDeliveryTrip(
@@ -54,8 +58,11 @@ data class AdminBuilding(
     val name: String,
     @SerialName("sort_order") val sortOrder: Int = 0,
     @SerialName("is_active") val isActive: Boolean = true,
-    val floors: List<Int> = emptyList()
-)
+    val floors: List<Int> = emptyList(),
+    @SerialName("college_zone") val collegeZone: String? = null
+) {
+    val lobbyOnly: Boolean get() = collegeZone == "KKB" || collegeZone == "KKC"
+}
 
 @Serializable
 data class AdminDeliverySettings(

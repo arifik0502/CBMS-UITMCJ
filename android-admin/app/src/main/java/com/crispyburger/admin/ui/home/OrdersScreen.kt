@@ -224,7 +224,7 @@ private fun OrderCard(order: AdminOrder, onClick: () -> Unit) {
             }
             Text(order.customerName, style = MaterialTheme.typography.bodyLarge)
             Text(
-                "${order.buildingLabel} · Floor ${order.floorNumber} · Room ${order.roomNumber}",
+                order.deliveryAddress,
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )

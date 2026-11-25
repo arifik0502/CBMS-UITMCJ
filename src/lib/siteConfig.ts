@@ -44,9 +44,9 @@ export const DEFAULT_SITE_CONFIG: SiteConfig = {
       items: [
         "Add burgers to your cart.",
         "Pick your delivery trip at checkout.",
-        "Tell us your building, floor and room. Add a note if you want it custom.",
+        "Choose your college. KKB and KKC deliveries go to the college lobby.",
         "Pay cash on delivery or by DuitNow QR.",
-        "We bring it to your room. Find it later under My orders."
+        "Follow your delivery under My orders."
       ]
     },
     { id: "trips", type: "trips", visible: true, title: "Delivery trips", body: "Choose the delivery window that suits you. Orders stay open until that window ends." },

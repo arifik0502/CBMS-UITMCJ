@@ -1,4 +1,3 @@
-import { CollegeDirectory } from "../components/CollegeDirectory";
 import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button, ErrorScreen, Field, Header, inputClass, LinkButton, LoadingScreen, Notice, Shell } from "../components/ui";
@@ -59,7 +58,11 @@ export default function OrderPage() {
   const totalQty = cartItems.reduce((sum, x) => sum + x.line.quantity, 0);
   const stockProblem = cartItems.some((x) => x.line.quantity > x.product.available_stock);
   const cartHasItem = totalQty > 0;
-  const form: OrderFormValues = { ...values, quantity: totalQty };
+  const lobbyOnly = building?.college_zone === "KKB" || building?.college_zone === "KKC";
+  const form: OrderFormValues = {
+    ...values, buildingId: building?.id ?? "", quantity: totalQty,
+    floor: lobbyOnly ? "0" : values.floor, room: lobbyOnly ? "LOBBY" : values.room
+  };
   const total = subtotalCents(cart.lines, (id) => products.find((p) => p.id === id)?.price_cents);
   const anyStock = products.some((p) => p.available_stock > 0);
 
@@ -151,8 +154,8 @@ export default function OrderPage() {
         name: values.name.trim(),
         phone: normalizePhone(values.phone),
         buildingId: values.buildingId,
-        floor: Number(values.floor),
-        room: normalizeRoom(values.room),
+        floor: Number(form.floor),
+        room: normalizeRoom(form.room),
         items: cartItems.map(({ line }) => ({ productId: line.productId, quantity: line.quantity })),
         method: values.method as "CASH" | "DUITNOW",
         idempotencyKey: idempotencyKey(),
@@ -293,40 +296,55 @@ export default function OrderPage() {
               onChange={(e) => set("phone", e.target.value)} {...aria("phone")} />
           </Field>
 
-          <div className="grid grid-cols-2 gap-3">
-            <Field label="Building" htmlFor="building" error={err("buildingId")}>
-              <select id="building" className={inputClass} value={values.buildingId}
-                onChange={(e) => { set("buildingId", e.target.value); set("floor", ""); }} {...aria("buildingId")}>
-                <option value="">Choose</option>
-                {data.buildings.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}
-              </select>
-            </Field>
-            <Field label="Floor" htmlFor="floor" error={err("floor")}>
-              <select id="floor" className={inputClass} value={values.floor} disabled={!building}
-                onChange={(e) => set("floor", e.target.value)} {...aria("floor")}>
-                <option value="">{building ? "Choose" : "Pick building"}</option>
-                {building?.floors.map((f) => <option key={f} value={f}>Floor {f}</option>)}
-              </select>
-            </Field>
-          </div>
-
-          <CollegeDirectory />
-
-          <Field
-            label="Room number"
-            htmlFor="room"
-            error={err("room")}
-            hint={building && values.room.trim() ? `Delivering to ${roomLabel(building.code, normalizeRoom(values.room))}` : "Type your room number."}
-          >
-            <div className="flex">
-              <span className="grid min-w-14 place-items-center rounded-l-xl border-2 border-r-0 border-ink bg-bun-deep px-3 font-bold">
-                {building?.code ?? "—"}
-              </span>
-              <input id="room" className={`${inputClass} rounded-l-none`} autoCapitalize="characters"
-                autoComplete="off" maxLength={10} placeholder="205" value={values.room}
-                onChange={(e) => set("room", e.target.value)} {...aria("room")} />
-            </div>
+          <Field label="Building" htmlFor="building" error={err("buildingId")}>
+            <select id="building" className={inputClass} value={values.buildingId}
+              onChange={(e) => {
+                setValues({ ...values, buildingId: e.target.value, floor: "", room: "" });
+                setErrors({ ...errors, buildingId: undefined, floor: undefined, room: undefined });
+                setSubmitError(null);
+              }} {...aria("buildingId")}>
+              <option value="">Choose</option>
+              {(["KKA", "KKB", "KKC"] as const).map((zone) => {
+                const colleges = data.buildings.filter((b) => b.college_zone === zone);
+                return colleges.length > 0 && (
+                  <optgroup key={zone} label={zone === "KKA" ? zone : `${zone} · Lobby only`}>
+                    {colleges.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}
+                  </optgroup>
+                );
+              })}
+              {data.buildings.filter((b) => !b.college_zone).map((b) =>
+                <option key={b.id} value={b.id}>{b.name}</option>)}
+            </select>
           </Field>
+
+          {lobbyOnly ? (
+            <Notice>Meet the rider at the lobby of <strong>{building.name}</strong>.</Notice>
+          ) : (
+            <div className="space-y-4">
+              <Field label="Floor" htmlFor="floor" error={err("floor")}>
+                <select id="floor" className={inputClass} value={values.floor} disabled={!building}
+                  onChange={(e) => set("floor", e.target.value)} {...aria("floor")}>
+                  <option value="">{building ? "Choose" : "Pick building"}</option>
+                  {building?.floors.map((f) => <option key={f} value={f}>Floor {f}</option>)}
+                </select>
+              </Field>
+              <Field
+                label="Room number"
+                htmlFor="room"
+                error={err("room")}
+                hint={building && values.room.trim() ? `Delivering to ${roomLabel(building.code, normalizeRoom(values.room))}` : "Type your room number."}
+              >
+                <div className="flex">
+                  <span className="grid min-w-14 place-items-center rounded-l-xl border-2 border-r-0 border-ink bg-bun-deep px-3 font-bold">
+                    {building?.code ?? "—"}
+                  </span>
+                  <input id="room" className={`${inputClass} rounded-l-none`} autoCapitalize="characters"
+                    autoComplete="off" maxLength={10} placeholder="205" value={values.room}
+                    onChange={(e) => set("room", e.target.value)} {...aria("room")} />
+                </div>
+              </Field>
+            </div>
+          )}
         </section>
 
         <section className="ticket p-5">
