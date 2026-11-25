@@ -51,3 +51,9 @@ export function showPaymentStatus(o: OrderView): boolean {
 export function totalBurgers(o: OrderView): number {
   return o.items.reduce((n, i) => n + i.quantity, 0);
 }
+
+/** Editing is more restrictive than cancellation: only before preparation and payment. */
+export function canEdit(o: OrderView): boolean {
+  return (o.order_status === "NEW" || o.order_status === "CONFIRMED") &&
+    (o.payment_status === "UNPAID" || o.payment_status === "CASH_PENDING") && !o.receipt_submitted;
+}

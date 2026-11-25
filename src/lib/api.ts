@@ -1,5 +1,5 @@
 import { supabase } from "./supabase";
-import type { OrderTicket, OrderView, PaymentMethod, Storefront, TicketView } from "./types";
+import type { OrderEditOptions, OrderTicket, OrderView, PaymentMethod, Storefront, TicketView } from "./types";
 
 async function rpc<T>(fn: string, args?: Record<string, unknown>): Promise<T> {
   const { data, error } = await supabase.rpc(fn, args);
@@ -70,3 +70,7 @@ export const createTicket = (a: {
 export const getTicketsByTokens = (tokens: string[]) =>
   rpc<TicketView[]>("get_support_tickets_by_tokens", { p_tokens: tokens });
 
+
+export const getOrderEditOptions = (token: string) => rpc<OrderEditOptions>("get_order_edit_options", { p_token: token });
+export const editBookedOrder = (token: string, revision: number, items: { product_id: string; quantity: number }[], note: string, total: number) =>
+  rpc<OrderView>("edit_order_by_token", { p_token: token, p_revision: revision, p_items: items, p_note: note, p_expected_total: total });

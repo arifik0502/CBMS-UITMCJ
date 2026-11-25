@@ -38,7 +38,7 @@ export default function CancelOrder({
             : "min-h-12 w-full rounded-xl border-2 border-ketchup bg-paper px-5 py-3 text-base font-bold text-ketchup active:translate-y-0.5"
         }
       >
-        Cancel order
+        Delete / cancel order
       </button>
     );
   }
@@ -46,7 +46,7 @@ export default function CancelOrder({
   return (
     <div className="w-full space-y-3 rounded-xl border-2 border-ketchup bg-paper p-4">
       <p className="font-bold">Cancel this order?</p>
-      <p className="text-sm text-muted">Your burgers will be released and the order will stop.</p>
+      <p className="text-sm text-muted">Your booking will be cancelled and reserved stock released. A cancelled record is kept for your order history.</p>
       {error && <Notice tone="error">{error}</Notice>}
       <div className="grid grid-cols-2 gap-3">
         <button

@@ -112,6 +112,8 @@ fun OrderDetailDialog(
                     DetailLine("Location", order.deliveryAddress)
                     DetailLine("Payment", PaymentMethod.label(order.paymentMethod))
                     DetailLine("Total", Money.format(order.totalCents))
+                    if (order.customerEditRevision > 0) MessageCard("Updated by customer (${order.customerEditRevision} revision(s)). Review the latest items and total.", isError = false)
+                    if (!order.cancelledReason.isNullOrBlank()) DetailLine("Cancellation reason", order.cancelledReason)
                     DetailLine("Ordered", Formats.malaysiaDateTime(order.createdAt))
                     DetailLine("Delivery trip", order.tripLabel)
                     if (order.tripWindow.isNotBlank()) DetailLine("Trip window", order.tripWindow)

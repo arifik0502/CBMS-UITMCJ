@@ -33,7 +33,9 @@ data class AdminOrder(
     val buildingLabel: String = "",
     val tripLabel: String = "",
     val tripWindow: String = "",
-    val tripNo: Int = 0
+    val tripNo: Int = 0,
+    @SerialName("customer_edit_revision") val customerEditRevision: Int = 0,
+    @SerialName("cancelled_reason") val cancelledReason: String? = null
 ) {
     val deliveryAddress: String
         get() = if (floorNumber == 0 && roomNumber == "LOBBY") "$buildingLabel · Lobby"

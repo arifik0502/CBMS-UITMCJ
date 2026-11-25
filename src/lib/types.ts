@@ -95,3 +95,10 @@ export interface TicketView {
   has_photo: boolean;
 }
 
+
+export interface OrderEditOptions {
+  revision: number;
+  note: string | null;
+  max_qty: number;
+  products: { id: string; name: string; price_cents: number; quantity: number; max_quantity: number }[];
+}

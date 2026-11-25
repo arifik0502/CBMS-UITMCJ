@@ -1,10 +1,11 @@
 import { useEffect, useState } from "react";
 import { useParams, useSearchParams } from "react-router-dom";
 import CancelOrder from "../components/CancelOrder";
+import EditOrder from "../components/EditOrder";
 import { Button, ErrorScreen, Header, LinkButton, LoadingScreen, Notice, Pill, Shell } from "../components/ui";
 import { formatRM, formatTime, roomLabel } from "../lib/format";
 import { updateFromView } from "../lib/orderHistory";
-import { canCancel, isPaidLocked, showPaymentStatus } from "../lib/orderRules";
+import { canCancel, canEdit, isPaidLocked, showPaymentStatus } from "../lib/orderRules";
 import { ORDER_LABEL, PAYMENT_LABEL, STEPS, stepIndex } from "../lib/statusText";
 import { useOrder } from "../lib/useOrder";
 
@@ -152,6 +153,9 @@ export default function TrackPage() {
         </section>
       )}
 
+      {canEdit(order) && token && (
+        <div className="mt-5"><EditOrder token={token} initiallyOpen={params.get("edit") === "1"} onSaved={(updated) => { updateFromView(token, updated); void reload(); }} /></div>
+      )}
       {canCancel(order) && (
         <div className="mt-5">
           <CancelOrder token={token as string} onCancelled={() => { void reload(); }} />

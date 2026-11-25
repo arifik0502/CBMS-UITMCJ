@@ -129,6 +129,12 @@ class OrdersViewModel(
 
         ordersResult
             .onSuccess { orders ->
+                val previous = _state.value.selectedOrder
+                val latest = previous?.let { old -> orders.firstOrNull { it.id == old.id } }
+                if (previous != null && latest != null && (latest.customerEditRevision != previous.customerEditRevision || (latest.orderStatus == "CANCELLED" && previous.orderStatus != "CANCELLED"))) {
+                    dismissDetail()
+                    _state.update { it.copy(info = "Customer booking changed. Reopen the order to review current details.") }
+                }
                 _state.update {
                     it.copy(
                         orders = orders,

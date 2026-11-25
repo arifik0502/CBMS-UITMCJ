@@ -234,6 +234,9 @@ export default function OrdersPage() {
                 </>
               )}
 
+              {!unavailable && (o.status === "NEW" || o.status === "CONFIRMED") && (o.paymentStatus === "UNPAID" || o.paymentStatus === "CASH_PENDING") && (
+                <div className="mt-3"><Link to={`/track/${o.token}?edit=1`} className="action action-secondary">Edit order</Link></div>
+              )}
               {cancellable && (
                 <div className="mt-3">
                   <CancelOrder compact token={o.token} onCancelled={() => { void refreshAfterCancel(o.token); }} />

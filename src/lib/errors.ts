@@ -20,6 +20,8 @@ const MESSAGES: Record<string, (hint?: string | null) => string> = {
   PRODUCT_NOT_FOUND: () => "One item is no longer available. Return to the menu and update your cart.",
   NO_PRODUCT: () => "The menu is unavailable right now.",
   ORDER_NOT_FOUND: () => "We could not find that order. Check the link you were given.",
+  ORDER_EDIT_LOCKED: () => "This order is already being prepared, paid, or expired. Contact the team for changes.",
+  ORDER_EDIT_STALE: () => "The booking or price changed. Reload the latest order before saving.",
   ORDER_CANCELLED: () => "This order was cancelled.",
   PAYMENT_ALREADY_SETTLED: () => "Payment for this order is already confirmed.",
   RECEIPT_NOT_FOUND: () => "The upload did not finish. Try again.",

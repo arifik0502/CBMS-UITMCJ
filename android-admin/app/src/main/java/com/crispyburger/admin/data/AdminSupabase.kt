@@ -75,7 +75,7 @@ object AdminSupabase : AdminApi {
     private val ORDER_COLUMNS = Columns.list(
         "id", "order_no", "customer_name", "customer_phone", "building_id", "floor_number",
         "room_number", "payment_method", "order_status", "payment_status", "total_cents",
-        "created_at", "delivered_at", "trip_id", "trip_date", "note"
+        "created_at", "delivered_at", "trip_id", "trip_date", "note", "customer_edit_revision", "cancelled_reason"
     )
 
     private val SALES_COLUMNS = Columns.list(
